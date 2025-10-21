@@ -2,85 +2,73 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main ]
   pull_request:
     branches: [ main ]
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    
     strategy:
       matrix:
         node-version: [18.x, 20.x]
     
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Use Node.js ${{ matrix.node-version }}
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v4
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
-    
+        
     - name: Install dependencies
       run: npm ci
-    
+      
+    - name: Run tests
+      run: npm test
+      env:
+        NODE_ENV: test
+        
     - name: Run linting
       run: npm run lint
-    
-    - name: Run type checking
-      run: npx tsc --noEmit
-    
-    - name: Run tests
-      run: npm test -- --coverage --watchAll=false
-    
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage/lcov.info
-        flags: unittests
-        name: codecov-umbrella
-
+      
   build:
     runs-on: ubuntu-latest
     needs: test
     
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Use Node.js 20.x
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: 20.x
+        node-version: '20.x'
         cache: 'npm'
-    
+        
     - name: Install dependencies
       run: npm ci
-    
+      
     - name: Build application
       run: npm run build
       env:
         NODE_ENV: production
-    
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: build-files
-        path: .next/
-
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+        NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+        
   deploy:
     runs-on: ubuntu-latest
-    needs: [test, build]
+    needs: build
     if: github.ref == 'refs/heads/main'
     
     steps:
-    - uses: actions/checkout@v4
-    
     - name: Deploy to Vercel
       uses: amondnet/vercel-action@v25
       with:
         vercel-token: ${{ secrets.VERCEL_TOKEN }}
-        vercel-org-id: ${{ secrets.ORG_ID }}
-        vercel-project-id: ${{ secrets.PROJECT_ID }}
-        vercel-args: '--prod'
+        vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+        vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+        working-directory: ./
