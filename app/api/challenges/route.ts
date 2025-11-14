@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { createAuditLog, AuditActions } from '@/lib/audit-logger'
 import { handleError } from '@/lib/error-handler'
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(request: NextRequest) {
   try {
     const { userId, plan } = await request.json()
@@ -86,7 +88,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
+    const searchParams = request.nextUrl.searchParams
     const userId = searchParams.get('userId')
     const state = searchParams.get('state')
 

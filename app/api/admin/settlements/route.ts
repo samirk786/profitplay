@@ -3,9 +3,11 @@ import { prisma } from '@/lib/prisma'
 import { checkChallengeRules, updateChallengeAccountState, calculatePnlFromBet } from '@/lib/rules-engine'
 import { createAuditLog, AuditActions } from '@/lib/audit-logger'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
+    const searchParams = request.nextUrl.searchParams
     const status = searchParams.get('status') || 'OPEN'
     const marketId = searchParams.get('marketId')
 

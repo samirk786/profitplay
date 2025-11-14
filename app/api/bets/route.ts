@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { validateBetPlacement, calculatePotentialPayout } from '@/lib/rules-engine'
 import { createAuditLog, AuditActions } from '@/lib/audit-logger'
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(request: NextRequest) {
   try {
     const { challengeAccountId, marketId, selection, stake } = await request.json()
@@ -119,7 +121,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
+    const searchParams = request.nextUrl.searchParams
     const challengeAccountId = searchParams.get('challengeAccountId')
     const status = searchParams.get('status')
 
