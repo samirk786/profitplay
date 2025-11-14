@@ -34,6 +34,10 @@ export async function createCheckoutSession(
   userEmail: string
 ) {
   const stripePlan = STRIPE_PLANS[plan]
+  
+  // Ensure NEXTAUTH_URL is set
+  const baseUrl = process.env.NEXTAUTH_URL || 
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
 
   const session = await stripe.checkout.sessions.create({
     mode: 'subscription',
@@ -49,8 +53,8 @@ export async function createCheckoutSession(
       userId,
       plan,
     },
-    success_url: `${process.env.NEXTAUTH_URL}/dashboard?success=true`,
-    cancel_url: `${process.env.NEXTAUTH_URL}/pricing?canceled=true`,
+    success_url: `${baseUrl}/dashboard?success=true`,
+    cancel_url: `${baseUrl}/pricing?canceled=true`,
   })
 
   return session

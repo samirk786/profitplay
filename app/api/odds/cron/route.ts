@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { oddsApiService } from '@/lib/odds-api'
 
+export const dynamic = 'force-dynamic'
+
 // This endpoint can be called by a cron service like Vercel Cron or GitHub Actions
 export async function POST(request: NextRequest) {
   try {
@@ -29,7 +31,10 @@ export async function POST(request: NextRequest) {
         console.log(`📊 Updating odds for ${sport}...`)
         
         // Call the sync endpoint
-        const response = await fetch(`${process.env.NEXTAUTH_URL}/api/odds/sync`, {
+        const baseUrl = process.env.NEXTAUTH_URL || 
+          (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+        
+        const response = await fetch(`${baseUrl}/api/odds/sync`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
