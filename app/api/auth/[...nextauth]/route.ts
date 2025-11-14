@@ -4,6 +4,13 @@ import { PrismaAdapter } from '@next-auth/prisma-adapter'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 
+// Ensure NEXTAUTH_URL is always set to prevent Invalid URL errors during build
+if (!process.env.NEXTAUTH_URL) {
+  process.env.NEXTAUTH_URL = process.env.VERCEL_URL 
+    ? `https://${process.env.VERCEL_URL}` 
+    : 'http://localhost:3000'
+}
+
 const handler = NextAuth({
   adapter: PrismaAdapter(prisma),
   providers: [

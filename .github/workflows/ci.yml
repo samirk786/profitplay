@@ -54,13 +54,26 @@ jobs:
     - name: Install dependencies
       run: npm ci
       
+    - name: Set default environment variables
+      run: |
+        if [ -z "${{ secrets.NEXTAUTH_URL }}" ]; then
+          echo "NEXTAUTH_URL=http://localhost:3000" >> $GITHUB_ENV
+        else
+          echo "NEXTAUTH_URL=${{ secrets.NEXTAUTH_URL }}" >> $GITHUB_ENV
+        fi
+        if [ -z "${{ secrets.NEXTAUTH_SECRET }}" ]; then
+          echo "NEXTAUTH_SECRET=build-secret-key-$(date +%s)" >> $GITHUB_ENV
+        else
+          echo "NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET }}" >> $GITHUB_ENV
+        fi
+      
     - name: Build application
       run: npm run build
       env:
         NODE_ENV: production
         DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
-        NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+        NEXTAUTH_SECRET: ${{ env.NEXTAUTH_SECRET }}
+        NEXTAUTH_URL: ${{ env.NEXTAUTH_URL }}
         
   deploy:
     runs-on: ubuntu-latest
