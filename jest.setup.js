@@ -55,81 +55,34 @@ jest.mock('next-auth/react', () => ({
   signOut: jest.fn(),
 }))
 
-// Mock Prisma
-jest.mock('@/lib/prisma', () => ({
-  prisma: {
-    user: {
-      findUnique: jest.fn(),
-      findMany: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-    },
-    bet: {
-      findUnique: jest.fn(),
-      findMany: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-    },
-    market: {
-      findUnique: jest.fn(),
-      findMany: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-    },
-    challengeAccount: {
-      findUnique: jest.fn(),
-      findMany: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-    },
-    subscription: {
-      findUnique: jest.fn(),
-      findMany: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-    },
-    auditLog: {
-      findUnique: jest.fn(),
-      findMany: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-    },
-  },
-}))
+// Mock Prisma - commented out since we're not using it in current tests
+// Uncomment when you need to test components that use Prisma
+// jest.mock('@/lib/prisma', () => ({
+//   prisma: {
+//     user: { findUnique: jest.fn(), findMany: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() },
+//     bet: { findUnique: jest.fn(), findMany: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() },
+//     market: { findUnique: jest.fn(), findMany: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() },
+//     challengeAccount: { findUnique: jest.fn(), findMany: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() },
+//     subscription: { findUnique: jest.fn(), findMany: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() },
+//     auditLog: { findUnique: jest.fn(), findMany: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() },
+//   },
+// }))
 
-// Mock Stripe
-jest.mock('@/lib/stripe', () => ({
-  stripe: {
-    checkout: {
-      sessions: {
-        create: jest.fn(),
-        retrieve: jest.fn(),
-      },
-    },
-    customers: {
-      create: jest.fn(),
-      retrieve: jest.fn(),
-    },
-    subscriptions: {
-      retrieve: jest.fn(),
-      cancel: jest.fn(),
-    },
-    webhooks: {
-      constructEvent: jest.fn(),
-    },
-  },
-  createCheckoutSession: jest.fn(),
-  createCustomer: jest.fn(),
-  getSubscription: jest.fn(),
-  cancelSubscription: jest.fn(),
-  constructWebhookEvent: jest.fn(),
-}))
+// Mock Stripe - commented out since we're not using it in current tests
+// Uncomment when you need to test components that use Stripe
+// jest.mock('@/lib/stripe', () => ({
+//   stripe: {
+//     checkout: { sessions: { create: jest.fn(), retrieve: jest.fn() } },
+//     customers: { create: jest.fn(), retrieve: jest.fn() },
+//     subscriptions: { retrieve: jest.fn(), cancel: jest.fn() },
+//     webhooks: { constructEvent: jest.fn() },
+//   },
+//   createCheckoutSession: jest.fn(),
+//   createCustomer: jest.fn(),
+//   getSubscription: jest.fn(),
+//   cancelSubscription: jest.fn(),
+//   constructWebhookEvent: jest.fn(),
+// }))
 
 // Mock environment variables
 process.env.NEXTAUTH_URL = 'http://localhost:3000'
