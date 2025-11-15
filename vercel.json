@@ -10,8 +10,8 @@
   },
   "crons": [
     {
-      "path": "/api/cron/settle-bets",
-      "schedule": "0 */6 * * *"
+      "path": "/api/odds/cron",
+      "schedule": "0 1 * * *"
     }
   ],
   "env": {
