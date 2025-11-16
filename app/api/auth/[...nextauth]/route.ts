@@ -11,8 +11,14 @@ if (!process.env.NEXTAUTH_URL) {
     : 'http://localhost:3000'
 }
 
+// Check for required environment variables
+if (!process.env.NEXTAUTH_SECRET) {
+  console.warn('⚠️ NEXTAUTH_SECRET is not set! This may cause authentication issues.')
+}
+
 const handler = NextAuth({
   adapter: PrismaAdapter(prisma),
+  secret: process.env.NEXTAUTH_SECRET,
   providers: [
     CredentialsProvider({
       name: 'credentials',
@@ -21,29 +27,45 @@ const handler = NextAuth({
         password: { label: 'Password', type: 'password' }
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
+        try {
+          if (!credentials?.email || !credentials?.password) {
+            console.log('⚠️ Missing credentials')
+            return null
+          }
+
+          console.log(`🔍 Attempting to authenticate: ${credentials.email}`)
+          
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email }
+          })
+
+          if (!user) {
+            console.log(`❌ User not found: ${credentials.email}`)
+            return null
+          }
+
+          if (!user.password) {
+            console.log(`❌ User has no password: ${credentials.email}`)
+            return null
+          }
+
+          const isPasswordValid = await bcrypt.compare(credentials.password, user.password)
+
+          if (!isPasswordValid) {
+            console.log(`❌ Invalid password for: ${credentials.email}`)
+            return null
+          }
+
+          console.log(`✅ Authentication successful for: ${credentials.email}`)
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role
+          }
+        } catch (error) {
+          console.error('❌ Auth error:', error)
           return null
-        }
-
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email }
-        })
-
-        if (!user || !user.password) {
-          return null
-        }
-
-        const isPasswordValid = await bcrypt.compare(credentials.password, user.password)
-
-        if (!isPasswordValid) {
-          return null
-        }
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role
         }
       }
     })
