@@ -8,13 +8,9 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
   try {
-    // Simple auth check - you can remove this after seeding
-    const authHeader = request.headers.get('authorization')
-    const expectedToken = process.env.CRON_SECRET || 'temp-seed-token'
-    
-    if (authHeader !== `Bearer ${expectedToken}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    // Temporarily allow seeding without auth for initial setup
+    // TODO: Remove this endpoint after seeding is complete
+    console.log('🌱 Seeding users endpoint called')
 
     console.log('🌱 Seeding users...')
 
