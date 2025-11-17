@@ -6,10 +6,18 @@ import bcrypt from 'bcryptjs'
 
 // Ensure NEXTAUTH_URL is always set to prevent Invalid URL errors during build
 if (!process.env.NEXTAUTH_URL) {
-  process.env.NEXTAUTH_URL = process.env.VERCEL_URL 
-    ? `https://${process.env.VERCEL_URL}` 
-    : 'http://localhost:3000'
+  // In production, use the actual domain
+  if (process.env.VERCEL) {
+    process.env.NEXTAUTH_URL = 'https://profitplay.co'
+  } else if (process.env.VERCEL_URL) {
+    process.env.NEXTAUTH_URL = `https://${process.env.VERCEL_URL}`
+  } else {
+    process.env.NEXTAUTH_URL = 'http://localhost:3000'
+  }
 }
+
+console.log('🔧 NEXTAUTH_URL:', process.env.NEXTAUTH_URL)
+console.log('🔧 NODE_ENV:', process.env.NODE_ENV)
 
 // Check for required environment variables
 if (!process.env.NEXTAUTH_SECRET) {
@@ -19,6 +27,7 @@ if (!process.env.NEXTAUTH_SECRET) {
 const handler = NextAuth({
   adapter: PrismaAdapter(prisma),
   secret: process.env.NEXTAUTH_SECRET,
+  useSecureCookies: process.env.NODE_ENV === 'production',
   providers: [
     CredentialsProvider({
       name: 'credentials',
