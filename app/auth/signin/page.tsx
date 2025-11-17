@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { signIn } from 'next-auth/react'
+import { signIn, getSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 
 export default function SignIn() {
@@ -52,12 +52,27 @@ export default function SignIn() {
         setErrors({ general: 'Invalid email or password' })
         setIsLoading(false)
       } else if (result?.ok) {
-        // Wait a moment for the session cookie to be fully set
-        // Then do a full page reload to ensure middleware can read the cookie
-        setTimeout(() => {
-          console.log('Redirecting to dashboard...')
-          window.location.href = '/dashboard'
-        }, 500)
+        // Wait for the session to be established, then verify it before redirecting
+        setTimeout(async () => {
+          try {
+            const session = await getSession()
+            console.log('Session after sign in:', session)
+            
+            if (session) {
+              console.log('Session confirmed, redirecting to dashboard...')
+              // Use a full page reload to ensure cookie is sent
+              window.location.href = '/dashboard'
+            } else {
+              console.error('Session not found after sign in')
+              setErrors({ general: 'Session not established. Please try again.' })
+              setIsLoading(false)
+            }
+          } catch (error) {
+            console.error('Error getting session:', error)
+            // Try redirecting anyway
+            window.location.href = '/dashboard'
+          }
+        }, 1000) // Increased delay to 1 second
       } else {
         setErrors({ general: 'Unexpected response. Please try again.' })
         setIsLoading(false)
