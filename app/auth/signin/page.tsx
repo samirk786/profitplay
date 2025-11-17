@@ -145,11 +145,12 @@ export default function SignIn() {
                 </label>
               </div>
 
-              <div className="text-sm">
+              {/* TODO: Implement forgot password functionality */}
+              {/* <div className="text-sm">
                 <Link href="/auth/forgot-password" className="font-medium text-blue-600 hover:text-blue-500">
                   Forgot your password?
                 </Link>
-              </div>
+              </div> */}
             </div>
 
             <div>
