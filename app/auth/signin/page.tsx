@@ -39,26 +39,17 @@ export default function SignIn() {
     }
 
     try {
+      // Use NextAuth's built-in redirect - this handles session setup properly
       const result = await signIn('credentials', {
         email: formData.email,
         password: formData.password,
-        redirect: false,
+        redirect: true,
+        callbackUrl: '/dashboard',
       })
 
-      console.log('Sign in result:', result)
-
-      if (result?.error) {
-        setErrors({ general: 'Invalid email or password' })
-        setIsLoading(false)
-      } else if (result?.ok) {
-        // Wait a moment for the session cookie to be set, then redirect
-        setTimeout(() => {
-          window.location.href = '/dashboard'
-        }, 100)
-      } else {
-        setErrors({ general: 'Unexpected response. Please try again.' })
-        setIsLoading(false)
-      }
+      // If redirect is true, signIn will handle the redirect automatically
+      // This code may not execute if redirect succeeds
+      console.log('Sign in initiated, redirect should happen automatically')
     } catch (error) {
       console.error('Sign in error:', error)
       setErrors({ general: 'An error occurred. Please try again.' })

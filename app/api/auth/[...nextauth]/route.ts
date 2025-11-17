@@ -88,6 +88,7 @@ const handler = NextAuth({
         token.id = user.id
         token.sub = user.id
         token.role = (user as any).role
+        console.log('🔑 JWT callback - Token set:', { id: token.id, role: token.role })
       }
       return token
     },
@@ -95,8 +96,15 @@ const handler = NextAuth({
       if (token && session.user) {
         session.user.id = token.id as string || token.sub || ''
         session.user.role = (token.role as string) || ''
+        console.log('📋 Session callback - Session set:', { id: session.user.id, role: session.user.role })
       }
       return session
+    },
+    async redirect({ url, baseUrl }) {
+      // Ensure we redirect to the correct base URL
+      const redirectUrl = url.startsWith('/') ? `${baseUrl}${url}` : url
+      console.log('🔄 Redirect callback:', { url, baseUrl, redirectUrl })
+      return redirectUrl
     }
   },
   pages: {
