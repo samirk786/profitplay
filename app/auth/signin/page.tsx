@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { signIn, getSession } from 'next-auth/react'
+import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 
 export default function SignIn() {
@@ -47,13 +47,14 @@ export default function SignIn() {
 
       if (result?.error) {
         setErrors({ general: 'Invalid email or password' })
+        setIsLoading(false)
       } else if (result?.ok) {
-        // Redirect to dashboard on successful sign in
-        router.push('/dashboard')
+        // Use window.location for a full page reload to ensure session is set
+        window.location.href = '/dashboard'
       }
     } catch (error) {
+      console.error('Sign in error:', error)
       setErrors({ general: 'An error occurred. Please try again.' })
-    } finally {
       setIsLoading(false)
     }
   }
