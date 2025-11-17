@@ -5,14 +5,25 @@ import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 
 // Ensure NEXTAUTH_URL is always set to prevent Invalid URL errors during build
+// Check for www subdomain and use HTTPS in production
 if (!process.env.NEXTAUTH_URL) {
-  // In production, use the actual domain
+  // In production, use the actual domain with HTTPS
   if (process.env.VERCEL) {
-    process.env.NEXTAUTH_URL = 'https://profitplay.co'
+    // Use www.profitplay.co if available, otherwise profitplay.co
+    process.env.NEXTAUTH_URL = 'https://www.profitplay.co'
   } else if (process.env.VERCEL_URL) {
     process.env.NEXTAUTH_URL = `https://${process.env.VERCEL_URL}`
   } else {
     process.env.NEXTAUTH_URL = 'http://localhost:3000'
+  }
+} else {
+  // Ensure NEXTAUTH_URL uses HTTPS in production
+  if (process.env.NODE_ENV === 'production' && process.env.NEXTAUTH_URL.startsWith('http://')) {
+    process.env.NEXTAUTH_URL = process.env.NEXTAUTH_URL.replace('http://', 'https://')
+  }
+  // Ensure www subdomain if the site uses it
+  if (process.env.NEXTAUTH_URL.includes('profitplay.co') && !process.env.NEXTAUTH_URL.includes('www.')) {
+    process.env.NEXTAUTH_URL = process.env.NEXTAUTH_URL.replace('profitplay.co', 'www.profitplay.co')
   }
 }
 
