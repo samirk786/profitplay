@@ -45,12 +45,19 @@ export default function SignIn() {
         redirect: false,
       })
 
+      console.log('Sign in result:', result)
+
       if (result?.error) {
         setErrors({ general: 'Invalid email or password' })
         setIsLoading(false)
       } else if (result?.ok) {
-        // Use window.location for a full page reload to ensure session is set
-        window.location.href = '/dashboard'
+        // Wait a moment for the session cookie to be set, then redirect
+        setTimeout(() => {
+          window.location.href = '/dashboard'
+        }, 100)
+      } else {
+        setErrors({ general: 'Unexpected response. Please try again.' })
+        setIsLoading(false)
       }
     } catch (error) {
       console.error('Sign in error:', error)

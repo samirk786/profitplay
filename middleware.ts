@@ -9,18 +9,29 @@ export default withAuth(
       authorized: ({ token, req }) => {
         // Check if user is authenticated
         if (!token) {
+          console.log('❌ Middleware: No token found')
           return false
         }
 
+        console.log('✅ Middleware: Token found', { 
+          hasRole: !!token.role, 
+          role: token.role,
+          path: req.nextUrl.pathname 
+        })
+
         // Check admin routes
         if (req.nextUrl.pathname.startsWith('/admin')) {
-          return token.role === 'ADMIN'
+          const isAdmin = token.role === 'ADMIN'
+          console.log('🔐 Admin route check:', isAdmin)
+          return isAdmin
         }
 
         // Check protected routes
         if (req.nextUrl.pathname.startsWith('/dashboard') || 
             req.nextUrl.pathname.startsWith('/markets')) {
-          return token.role === 'MEMBER' || token.role === 'ADMIN'
+          const hasAccess = token.role === 'MEMBER' || token.role === 'ADMIN'
+          console.log('🔐 Protected route check:', hasAccess, 'role:', token.role)
+          return hasAccess
         }
 
         return true
