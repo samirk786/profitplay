@@ -1,469 +1,219 @@
-import Link from 'next/link'
+'use client'
 
-const plans = [
+import { useState } from 'react'
+import Header from '@/components/Header'
+
+// Mock player data based on the image description
+const MOCK_PLAYER_PROPS = [
   {
-    name: 'Starter',
-    price: 29,
-    description: 'Perfect for beginners',
-    features: [
-      '8% profit target',
-      '5% max daily loss',
-      '15% max drawdown',
-      '2% max stake per bet',
-      'Basic markets (NBA, NFL, MLB)',
-      'Email support'
-    ],
-    popular: false
+    id: '1',
+    playerName: 'Giannis Antetokounmpo',
+    jerseyNumber: 34,
+    team: 'MIL',
+    position: 'F',
+    matchup: 'Milwaukee Bucks @ Dallas Mavericks',
+    stat: 'Points',
+    value: 30.5,
+    odds: -110,
+    engagement: '19.5K'
   },
   {
-    name: 'Standard',
-    price: 59,
-    description: 'Most popular choice',
-    features: [
-      '10% profit target',
-      '5% max daily loss',
-      '15% max drawdown',
-      '3% max stake per bet',
-      'All major sports',
-      'Priority support',
-      'Advanced analytics'
-    ],
-    popular: true
+    id: '2',
+    playerName: 'Luka Doncic',
+    jerseyNumber: 77,
+    team: 'DAL',
+    position: 'G',
+    matchup: 'Milwaukee Bucks @ Dallas Mavericks',
+    stat: 'Points',
+    value: 32.5,
+    odds: -115,
+    engagement: '19.2K'
   },
   {
-    name: 'Pro',
-    price: 99,
-    description: 'For serious evaluators',
-    features: [
-      '12% profit target',
-      '5% max daily loss',
-      '15% max drawdown',
-      '5% max stake per bet',
-      'All sports + live markets',
-      'Dedicated support',
-      'Custom analytics',
-      'Early access to new features'
-    ],
-    popular: false
+    id: '3',
+    playerName: 'Damian Lillard',
+    jerseyNumber: 0,
+    team: 'MIL',
+    position: 'G',
+    matchup: 'Milwaukee Bucks @ Dallas Mavericks',
+    stat: 'Points',
+    value: 25.5,
+    odds: -108,
+    engagement: '17.8K'
+  },
+  {
+    id: '4',
+    playerName: 'Kyrie Irving',
+    jerseyNumber: 11,
+    team: 'DAL',
+    position: 'G',
+    matchup: 'Milwaukee Bucks @ Dallas Mavericks',
+    stat: 'Points',
+    value: 24.5,
+    odds: -112,
+    engagement: '18.1K'
+  },
+  {
+    id: '5',
+    playerName: 'Khris Middleton',
+    jerseyNumber: 22,
+    team: 'MIL',
+    position: 'F',
+    matchup: 'Milwaukee Bucks @ Dallas Mavericks',
+    stat: 'Points',
+    value: 18.5,
+    odds: -110,
+    engagement: '14.2K'
   }
 ]
 
+const SPORTS = [
+  { key: 'NBA', label: 'NBA', icon: '🏀' },
+  { key: 'NFL', label: 'NFL', icon: '🏈' },
+  { key: 'MLB', label: 'MLB', icon: '⚾' },
+  { key: 'NHL', label: 'NHL', icon: '🏒' },
+  { key: 'SOCCER', label: 'SOCCER', icon: '⚽' },
+  { key: 'MMA', label: 'MMA', icon: '🥊' }
+]
+
+const NBA_STATS = [
+  { key: 'POINTS', label: 'Points' },
+  { key: 'REBOUNDS', label: 'Rebounds' },
+  { key: 'ASSISTS', label: 'Assists' },
+  { key: 'STEALS', label: 'Steals' },
+  { key: 'BLOCKS', label: 'Blocks' },
+  { key: 'FG_PCT', label: 'Field Goal %' },
+  { key: 'FT_PCT', label: 'Free Throw %' },
+  { key: 'THREES', label: 'Three-Pointers' }
+]
+
 export default function Home() {
+  const [selectedSport, setSelectedSport] = useState('NBA')
+  const [selectedStat, setSelectedStat] = useState('POINTS')
+
+  const formatOdds = (odds: number) => {
+    if (odds > 0) return `+${odds}`
+    return odds.toString()
+  }
+
   return (
-    <div className="min-h-screen bg-white">
-      {/* Header */}
-      <header className="bg-white shadow-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-gray-900">ProfitPlay</h1>
-            </div>
-            <nav className="hidden md:flex space-x-8">
-              <a href="#how-it-works" className="text-gray-500 hover:text-gray-900">How It Works</a>
-              <a href="#pricing" className="text-gray-500 hover:text-gray-900">Pricing</a>
-              <a href="#faq" className="text-gray-500 hover:text-gray-900">FAQ</a>
-              <Link href="/auth/signin" className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
-                Get Started
-              </Link>
-            </nav>
-          </div>
+    <div className="min-h-screen bg-[#0a1128]">
+      <Header />
+      
+      {/* Main Title */}
+      <div className="text-center py-12">
+        <h1 className="text-6xl md:text-7xl font-bold text-white mb-8">
+          Earn It
+        </h1>
+
+        {/* Sport Categories */}
+        <div className="flex justify-center gap-4 mb-8 px-4 overflow-x-auto pb-4">
+          {SPORTS.map((sport) => (
+            <button
+              key={sport.key}
+              onClick={() => setSelectedSport(sport.key)}
+              className={`flex-shrink-0 w-20 h-20 rounded-full flex flex-col items-center justify-center font-medium transition-all ${
+                selectedSport === sport.key
+                  ? 'bg-white text-[#0a1128]'
+                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+              }`}
+            >
+              <span className="text-2xl mb-1">{sport.icon}</span>
+              <span className="text-xs">{sport.label}</span>
+            </button>
+          ))}
         </div>
-      </header>
 
-      {/* Hero Section */}
-      <section className="bg-gradient-to-br from-blue-50 to-indigo-100 py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <h1 className="text-5xl md:text-7xl font-bold text-gray-900 mb-6">
-              Master Sports Performance
-              <span className="block text-blue-600">Through Simulation</span>
-            </h1>
-            <p className="text-xl text-gray-600 mb-8 max-w-4xl mx-auto">
-              A skill-based evaluation platform that identifies disciplined, profitable performance 
-              without risking your funds during the evaluation process. Prove your skills and get funded.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
-              <Link 
-                href="/auth/signup" 
-                className="bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors"
-              >
-                Start Your Evaluation
-              </Link>
-              <a 
-                href="#pricing" 
-                className="border border-gray-300 text-gray-700 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-50 transition-colors"
-              >
-                View Plans
-              </a>
-            </div>
-            
-            {/* Hero Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-              <div className="text-center">
-                <div className="text-4xl font-bold text-blue-600 mb-2">$10K</div>
-                <div className="text-gray-600">Starting Balance</div>
-              </div>
-              <div className="text-center">
-                <div className="text-4xl font-bold text-green-600 mb-2">8-12%</div>
-                <div className="text-gray-600">Profit Target</div>
-              </div>
-              <div className="text-center">
-                <div className="text-4xl font-bold text-purple-600 mb-2">Risk-Free</div>
-                <div className="text-gray-600">Simulation Only</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works Section */}
-      <section id="how-it-works" className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">How It Works</h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Our evaluation process is designed to identify skilled, disciplined performers 
-              through realistic simulation scenarios.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-            <div className="text-center">
-              <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <span className="text-2xl font-bold text-blue-600">1</span>
-              </div>
-              <h3 className="text-2xl font-semibold mb-4">Choose Your Plan</h3>
-              <p className="text-gray-600 text-lg">
-                Select from our Starter, Standard, or Pro evaluation plans. Each plan has different 
-                profit targets and risk parameters tailored to your experience level.
-              </p>
-            </div>
-            
-            <div className="text-center">
-              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <span className="text-2xl font-bold text-green-600">2</span>
-              </div>
-              <h3 className="text-2xl font-semibold mb-4">Start Your Challenge</h3>
-              <p className="text-gray-600 text-lg">
-                Begin with a $10,000 simulated balance. Place bets on real sports markets using 
-                live odds data. Track your performance and follow the rules.
-              </p>
-            </div>
-            
-            <div className="text-center">
-              <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <span className="text-2xl font-bold text-purple-600">3</span>
-              </div>
-              <h3 className="text-2xl font-semibold mb-4">Get Funded</h3>
-              <p className="text-gray-600 text-lg">
-                Once you hit your profit target while following all rules, you'll be eligible 
-                for our funded program with real capital management opportunities.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="py-20 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">Why Choose ProfitPlay?</h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              We provide the most realistic and comprehensive evaluation platform for sports performance analysis.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <div className="bg-white p-8 rounded-lg shadow-lg">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-6">
-                <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold mb-4">Real-Time Data</h3>
-              <p className="text-gray-600">
-                Access live odds and market data from major sportsbooks. Practice with the same 
-                information you'd have in real scenarios.
-              </p>
-            </div>
-            
-            <div className="bg-white p-8 rounded-lg shadow-lg">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-6">
-                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold mb-4">Risk-Free Learning</h3>
-              <p className="text-gray-600">
-                Learn and improve without financial risk. Focus on skill development and strategy 
-                refinement without the pressure of real money.
-              </p>
-            </div>
-            
-            <div className="bg-white p-8 rounded-lg shadow-lg">
-              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mb-6">
-                <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold mb-4">Advanced Analytics</h3>
-              <p className="text-gray-600">
-                Detailed performance tracking, equity curves, and comprehensive reporting to 
-                help you understand your strengths and areas for improvement.
-              </p>
-            </div>
-
-            <div className="bg-white p-8 rounded-lg shadow-lg">
-              <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mb-6">
-                <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold mb-4">Rule Enforcement</h3>
-              <p className="text-gray-600">
-                Automated rule checking ensures fair evaluation. Daily loss limits, drawdown 
-                controls, and consistency requirements keep you disciplined.
-              </p>
-            </div>
-
-            <div className="bg-white p-8 rounded-lg shadow-lg">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-6">
-                <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold mb-4">Multiple Sports</h3>
-              <p className="text-gray-600">
-                Practice with NBA, NFL, MLB, and more. Each sport has different market types 
-                and strategies to master.
-              </p>
-            </div>
-
-            <div className="bg-white p-8 rounded-lg shadow-lg">
-              <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mb-6">
-                <svg className="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold mb-4">Community Support</h3>
-              <p className="text-gray-600">
-                Join a community of like-minded individuals. Share strategies, learn from others, 
-                and get support throughout your evaluation journey.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing Section */}
-      <section id="pricing" className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">Choose Your Evaluation Plan</h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Start your journey to becoming a funded performer. All plans include risk-free simulation 
-              with real market data.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            {plans.map((plan) => (
-              <div
-                key={plan.name}
-                className={`relative bg-white rounded-2xl shadow-lg p-8 ${
-                  plan.popular ? 'ring-2 ring-blue-500 scale-105' : ''
+        {/* Stat Categories */}
+        {selectedSport === 'NBA' && (
+          <div className="flex justify-center gap-3 mb-12 px-4 overflow-x-auto pb-4">
+            {NBA_STATS.map((stat) => (
+              <button
+                key={stat.key}
+                onClick={() => setSelectedStat(stat.key)}
+                className={`flex-shrink-0 px-6 py-2 rounded-full font-medium transition-all ${
+                  selectedStat === stat.key
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                 }`}
               >
-                {plan.popular && (
-                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                    <span className="bg-blue-500 text-white px-4 py-1 rounded-full text-sm font-semibold">
-                      Most Popular
-                    </span>
+                {stat.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Player Cards */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-12">
+            {MOCK_PLAYER_PROPS.map((player) => (
+              <div
+                key={player.id}
+                className="bg-gray-900 rounded-lg p-4 border border-gray-800 hover:border-gray-600 transition-all"
+              >
+                {/* Top Section - Jersey & Engagement */}
+                <div className="flex items-center justify-between mb-4">
+                  <div className="relative">
+                    <div className="w-12 h-12 bg-red-600 rounded flex items-center justify-center">
+                      <span className="text-white font-bold text-lg">
+                        {player.jerseyNumber}
+                      </span>
+                    </div>
                   </div>
-                )}
-                
-                <div className="text-center mb-8">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">{plan.name}</h3>
-                  <p className="text-gray-600 mb-4">{plan.description}</p>
-                  <div className="flex items-baseline justify-center">
-                    <span className="text-5xl font-bold text-gray-900">${plan.price}</span>
-                    <span className="text-gray-500 ml-2">/month</span>
+                  <div className="flex items-center gap-1 text-orange-400">
+                    <svg
+                      className="w-4 h-4"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.534-.398-2.654A1 1 0 005.05 6.05 6.981 6.981 0 003 11a7 7 0 1011.95-4.95c-.592-.591-.98-.985-1.348-1.467-.363-.476-.724-1.063-1.207-2.03zM12.12 15.12A3 3 0 017 13s.879.5 2.5.5c0-1 .5-4 1.25-4.5.5 1 .786 1.293 1.371 1.879A2.99 2.99 0 0113 13a2.99 2.99 0 01-.879 2.121z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <span className="text-sm font-medium">{player.engagement}</span>
                   </div>
                 </div>
 
-                <ul className="space-y-4 mb-8">
-                  {plan.features.map((feature, index) => (
-                    <li key={index} className="flex items-start">
-                      <svg className="w-5 h-5 text-green-500 mr-3 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                      <span className="text-gray-700">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
+                {/* Middle Section - Player Info */}
+                <div className="mb-4">
+                  <h3 className="text-white font-semibold text-lg mb-1">
+                    {player.playerName}
+                  </h3>
+                  <p className="text-gray-400 text-sm mb-1">
+                    {player.team} - {player.position}
+                  </p>
+                  <p className="text-gray-500 text-xs">
+                    {player.matchup}
+                  </p>
+                </div>
 
-                <Link
-                  href={`/auth/signup?plan=${plan.name.toLowerCase()}`}
-                  className={`w-full block text-center py-3 px-6 rounded-lg font-semibold transition-colors ${
-                    plan.popular
-                      ? 'bg-blue-600 text-white hover:bg-blue-700'
-                      : 'bg-gray-900 text-white hover:bg-gray-800'
-                  }`}
-                >
-                  Get Started
-                </Link>
+                {/* Bottom Section - Stat & Odds */}
+                <div className="mb-4">
+                  <p className="text-gray-400 text-sm mb-2">{player.stat}</p>
+                  <p className="text-white font-bold text-3xl mb-1">
+                    {player.value}
+                  </p>
+                  <p className="text-gray-400 text-sm">
+                    {formatOdds(player.odds)}
+                  </p>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="grid grid-cols-2 gap-2">
+                  <button className="bg-green-600 hover:bg-green-700 text-white py-2 px-3 rounded font-medium text-sm transition-colors">
+                    More
+                  </button>
+                  <button className="bg-red-600 hover:bg-red-700 text-white py-2 px-3 rounded font-medium text-sm transition-colors">
+                    Less
+                  </button>
+                </div>
               </div>
             ))}
           </div>
         </div>
-      </section>
-
-      {/* FAQ Section */}
-      <section id="faq" className="py-20 bg-gray-50">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">Frequently Asked Questions</h2>
-            <p className="text-xl text-gray-600">
-              Everything you need to know about our evaluation process.
-            </p>
-          </div>
-          
-          <div className="space-y-8">
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                What is ProfitPlay?
-              </h3>
-              <p className="text-gray-600">
-                ProfitPlay is a simulation-based evaluation platform that helps you develop 
-                disciplined performance skills using real market data without financial risk. 
-                Think of it as "TopStep for sports bettors" - we identify skilled performers 
-                and provide funding opportunities.
-              </p>
-            </div>
-            
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Is this real money wagering?
-              </h3>
-              <p className="text-gray-600">
-                No, this is purely a simulation platform. No real money is wagered by users. 
-                We use real market data to create realistic evaluation scenarios. Your subscription 
-                fee gives you access to the platform and evaluation tools.
-              </p>
-            </div>
-            
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                What happens after I complete a challenge?
-              </h3>
-              <p className="text-gray-600">
-                Upon successful completion of your evaluation, you'll be eligible for our 
-                funded program where you can manage real capital based on your proven performance. 
-                This is where the real opportunities begin.
-              </p>
-            </div>
-            
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                What are the rules I need to follow?
-              </h3>
-              <p className="text-gray-600">
-                Each plan has specific rules including profit targets (8-12%), daily loss limits (5%), 
-                maximum drawdown (15%), and stake limits (2-5% per bet). These rules are automatically 
-                enforced to ensure fair evaluation.
-              </p>
-            </div>
-            
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Can I cancel my subscription anytime?
-              </h3>
-              <p className="text-gray-600">
-                Yes, you can cancel your subscription at any time. Your evaluation progress 
-                will be saved and you can resume when you're ready. No long-term commitments required.
-              </p>
-            </div>
-            
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                What sports and markets are available?
-              </h3>
-              <p className="text-gray-600">
-                We offer NBA, NFL, MLB, and more with various market types including moneylines, 
-                spreads, totals, and props. All odds are real-time from major sportsbooks to 
-                ensure realistic evaluation conditions.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-20 bg-blue-600">
-        <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
-          <h2 className="text-4xl font-bold text-white mb-4">
-            Ready to Prove Your Skills?
-          </h2>
-          <p className="text-xl text-blue-100 mb-8">
-            Join thousands of performers who are developing their skills and getting funded 
-            through our evaluation platform.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link 
-              href="/auth/signup" 
-              className="bg-white text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-100 transition-colors"
-            >
-              Start Your Evaluation
-            </Link>
-            <Link 
-              href="/auth/signin" 
-              className="border border-white text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors"
-            >
-              Sign In
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div>
-              <h3 className="text-lg font-semibold mb-4">ProfitPlay</h3>
-              <p className="text-gray-400 text-sm">
-                A simulation-based evaluation platform for sports performance analysis.
-              </p>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Legal</h4>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li><Link href="/terms" className="hover:text-white">Terms of Service</Link></li>
-                <li><Link href="/privacy" className="hover:text-white">Privacy Policy</Link></li>
-                <li><Link href="/age-policy" className="hover:text-white">Age Policy</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Compliance</h4>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li>18+ Age Requirement</li>
-                <li>Simulation Only</li>
-                <li>No Real Money Wagering</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Contact</h4>
-              <p className="text-sm text-gray-400">
-                support@profitplay.com
-              </p>
-            </div>
-          </div>
-          <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm text-gray-400">
-            <p>&copy; 2024 ProfitPlay. All rights reserved. This is a simulation platform only.</p>
-          </div>
-        </div>
-      </footer>
+      </div>
     </div>
   )
 }
