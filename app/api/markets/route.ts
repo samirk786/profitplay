@@ -73,39 +73,93 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // For player props or when no markets found, we'll return mock data
+    // Query markets from database (including player props)
+    // Production flow: Database → API → Mock fallback
     let markets: any[] = []
     
-    if (marketType && marketType.startsWith('PLAYER_')) {
-      // Return comprehensive mock player props data
-      markets = getMockPlayerProps(sport || 'NFL', marketType)
-    } else {
-      // Query regular markets from database
-      try {
-        markets = await prisma.market.findMany({
-          where,
-          include: {
-            oddsSnapshots: {
-              where: {
-                ts: {
-                  gte: new Date(Date.now() - 30 * 60 * 1000) // Last 30 minutes (more generous for real data)
-                }
-              },
-              orderBy: { ts: 'desc' },
-              take: 1
-            }
-          },
-          orderBy: { startTime: 'asc' }
-        })
+    try {
+      // Step 1: Try to fetch from database first (real data if available)
+      markets = await prisma.market.findMany({
+        where,
+        include: {
+          oddsSnapshots: {
+            where: {
+              ts: {
+                gte: new Date(Date.now() - 30 * 60 * 1000) // Last 30 minutes
+              }
+            },
+            orderBy: { ts: 'desc' },
+            take: 1
+          }
+        },
+        orderBy: { startTime: 'asc' }
+      })
+
+      // Step 2: For player props, if no data or refresh requested, try fetching from API
+      if (marketType && marketType.startsWith('PLAYER_')) {
+        const needsRefresh = refresh || markets.length === 0 || markets.every(m => !m.oddsSnapshots || m.oddsSnapshots.length === 0)
         
-        // If no markets found or no odds, use mock data
+        if (needsRefresh && sport && sport !== 'ALL') {
+          try {
+            const sportKey = mapSportToOddsApiKey(sport)
+            console.log(`🔄 Fetching live player props from API for ${sport} - ${marketType}`)
+            
+            // Fetch player props from Odds API (if supported)
+            const playerPropsData = await oddsApiService.fetchPlayerProps(sportKey)
+            
+            // If API returns data, store it in database for future queries
+            if (playerPropsData && playerPropsData.length > 0) {
+              console.log(`✅ Received ${playerPropsData.length} player props from API, storing in database`)
+              await syncPlayerPropsToDatabase(playerPropsData, marketType)
+              
+              // Re-query from database after sync to get the fresh data
+              markets = await prisma.market.findMany({
+                where,
+                include: {
+                  oddsSnapshots: {
+                    where: {
+                      ts: {
+                        gte: new Date(Date.now() - 30 * 60 * 1000)
+                      }
+                    },
+                    orderBy: { ts: 'desc' },
+                    take: 1
+                  }
+                },
+                orderBy: { startTime: 'asc' }
+              })
+            } else {
+              console.log(`⚠️  No player props data returned from API for ${sport}`)
+            }
+          } catch (error) {
+            console.warn('❌ Failed to fetch player props from API:', error)
+            // Continue to check if we have any cached data, otherwise fall back to mocks
+          }
+        }
+        
+        // Step 3: If still no real data, use mock data as fallback
+        // NOTE: The Odds API may not support player props. For production, consider:
+        // - Integrating with a specialized player props API (OddsJam, MetaBet, etc.)
+        // - Or implementing a scheduled job to sync player props from an API that supports them
+        // Mock data is used here for demonstration/presentation purposes
+        if (markets.length === 0 || markets.every(m => !m.oddsSnapshots || m.oddsSnapshots.length === 0)) {
+          console.log(`📝 Using mock player props data for ${sport} - ${marketType}`)
+          console.log(`   ℹ️  Note: The Odds API may not support player props. Mock data used for demo.`)
+          markets = getMockPlayerProps(sport || 'NFL', marketType)
+        }
+      } else {
+        // For regular markets: if no data, use mock markets as fallback
         if (markets.length === 0 || markets.every(m => !m.oddsSnapshots || m.oddsSnapshots.length === 0)) {
           console.log('No markets with odds found, using mock data')
           markets = getMockMarkets()
         }
-      } catch (error) {
-        console.warn('Database query failed, returning mock data:', error)
-        // Return mock data as fallback
+      }
+    } catch (error) {
+      console.warn('Database query failed:', error)
+      // Fall back to mock data only if database completely fails
+      if (marketType && marketType.startsWith('PLAYER_')) {
+        markets = getMockPlayerProps(sport || 'NFL', marketType)
+      } else {
         markets = getMockMarkets()
       }
     }
@@ -209,6 +263,58 @@ function mapSportToOddsApiKey(sport: string): string {
     'SOCCER': 'soccer_epl'
   }
   return mapping[sport] || 'basketball_nba'
+}
+
+// Helper function to sync player props from API to database
+async function syncPlayerPropsToDatabase(processedMarkets: any[], requestedMarketType?: string) {
+  try {
+    for (const event of processedMarkets) {
+      // Each processed market represents a player prop event
+      for (const marketData of event.markets) {
+        // Filter by requested market type if specified
+        if (requestedMarketType && marketData.marketType !== requestedMarketType) {
+          continue
+        }
+
+        // Create or update market for this player prop
+        const marketId = `${event.eventId}-${marketData.marketType}`
+        
+        const market = await prisma.market.upsert({
+          where: { id: marketId },
+          update: {
+            sport: event.sport,
+            league: event.league,
+            participants: event.participants,
+            startTime: event.startTime,
+            status: 'UPCOMING'
+          },
+          create: {
+            id: marketId,
+            sport: event.sport,
+            league: event.league,
+            eventId: event.eventId,
+            marketType: marketData.marketType as any,
+            participants: event.participants,
+            startTime: event.startTime,
+            status: 'UPCOMING'
+          }
+        })
+
+        // Create odds snapshot
+        await prisma.oddsSnapshot.create({
+          data: {
+            marketId: market.id,
+            bookmaker: marketData.bookmaker,
+            lineJSON: marketData.odds
+          }
+        })
+      }
+    }
+    console.log(`✅ Synced ${processedMarkets.length} player props events to database`)
+  } catch (error) {
+    console.error('Error syncing player props to database:', error)
+    throw error
+  }
 }
 
 // Comprehensive player props data - 20+ players per category

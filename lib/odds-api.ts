@@ -73,54 +73,139 @@ export class OddsApiService {
 
   /**
    * Fetch player props for a specific sport
+   * NOTE: The Odds API (the-odds-api.com) may not support player props directly.
+   * This function attempts to fetch them, but will return empty array if not supported.
+   * For production, you may need to integrate with a different API provider that
+   * specializes in player props (e.g., OddsJam, MetaBet, Wager API).
+   * 
+   * If the API doesn't support player props, the route will fall back to mock data
+   * for demonstration purposes.
    */
   async fetchPlayerProps(sport: string): Promise<ProcessedMarket[]> {
     try {
-      // For now, let's create mock player props data since the API might not have player props
-      // In a real implementation, you'd need to check which markets are available for each sport
-      console.log(`Creating mock player props data for ${sport}`)
-      
-      const mockPlayerProps: ProcessedMarket[] = [
-        {
-          eventId: `player_props_${Date.now()}_1`,
-          sport: this.mapSportName(sport),
-          league: 'Player Props',
-          participants: ['Josh Allen', 'Buffalo Bills'],
-          startTime: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
-          markets: [
-            {
-              marketType: 'PLAYER_PASS_YDS',
-              bookmaker: 'DraftKings',
-              odds: {
-                over: { total: 276, odds: -110 },
-                under: { total: 276, odds: -110 }
-              }
-            }
-          ]
-        },
-        {
-          eventId: `player_props_${Date.now()}_2`,
-          sport: this.mapSportName(sport),
-          league: 'Player Props',
-          participants: ['Christian McCaffrey', 'San Francisco 49ers'],
-          startTime: new Date(Date.now() + 24 * 60 * 60 * 1000),
-          markets: [
-            {
-              marketType: 'PLAYER_RUSH_YDS',
-              bookmaker: 'DraftKings',
-              odds: {
-                over: { total: 96, odds: -105 },
-                under: { total: 96, odds: -115 }
-              }
-            }
-          ]
-        }
-      ]
+      // Define player props market types based on sport
+      // NOTE: These market names may need to be adjusted based on actual Odds API support
+      // The Odds API may use different naming conventions or may not support all of these
+      const playerPropsMarkets: Record<string, string[]> = {
+        'americanfootball_nfl': [
+          'player_pass_tds',
+          'player_pass_yds',
+          'player_pass_completions',
+          'player_rush_yds',
+          'player_rush_att',
+          'player_rec_yds',
+          'player_rec_receptions',
+          'player_rec_tds'
+        ],
+        'basketball_nba': [
+          'player_points',
+          'player_rebounds',
+          'player_assists',
+          'player_threes',
+          'player_steals',
+          'player_blocks'
+        ],
+        'baseball_mlb': [
+          'player_hits',
+          'player_home_runs',
+          'player_strikeouts',
+          'player_total_bases'
+        ],
+        'icehockey_nhl': [
+          'player_points',
+          'player_goals',
+          'player_assists',
+          'player_shots_on_goal'
+        ]
+      }
 
-      return mockPlayerProps
+      const marketsToFetch = playerPropsMarkets[sport] || []
+      
+      if (marketsToFetch.length === 0) {
+        console.log(`No player props markets defined for sport: ${sport}`)
+        return []
+      }
+
+      console.log(`Fetching player props for ${sport} with markets: ${marketsToFetch.join(', ')}`)
+
+      // Fetch player props from the Odds API
+      const params = new URLSearchParams({
+        apiKey: this.apiKey,
+        sport,
+        markets: marketsToFetch.join(','),
+        regions: 'us',
+        oddsFormat: 'american',
+        dateFormat: 'iso'
+      })
+
+      const response = await fetch(`${this.baseUrl}/sports/${sport}/odds/?${params}`)
+      
+      if (!response.ok) {
+        // If player props aren't available, return empty array (we'll fall back to mocks in the route)
+        console.warn(`Player props not available for ${sport}: ${response.status} ${response.statusText}`)
+        return []
+      }
+
+      const data: OddsApiResponse[] = await response.json()
+      
+      if (!data || data.length === 0) {
+        console.log(`No player props data returned for ${sport}`)
+        return []
+      }
+
+      // Process player props data - need to extract player name from event/outcome names
+      const processedMarkets: ProcessedMarket[] = []
+      
+      for (const event of data) {
+        // Player props are structured differently - each event represents a player prop
+        // The event structure may have player names in the home_team/away_team or outcomes
+        for (const bookmaker of event.bookmakers) {
+          for (const market of bookmaker.markets) {
+            // Extract player name from outcomes or event name
+            // Player props typically have outcomes like "Over 275.5" or "Under 275.5"
+            // The player name might be in the event title or outcome name
+            const playerName = event.home_team || event.away_team || 'Player'
+            const teamName = event.home_team && event.away_team 
+              ? (event.home_team.includes(playerName) ? event.away_team : event.home_team)
+              : event.home_team || event.away_team || 'Team'
+
+            const marketType = this.mapPlayerPropsMarketType(market.key)
+            const odds = this.processPlayerPropsOutcomes(market.outcomes, market.key)
+
+            // Find existing processed market for this player and market type
+            let processedMarket = processedMarkets.find(
+              pm => pm.eventId === `${event.id}-${playerName}-${marketType}` &&
+                    pm.markets.some(m => m.marketType === marketType)
+            )
+
+            if (!processedMarket) {
+              processedMarket = {
+                eventId: `${event.id}-${playerName}-${marketType}`,
+                sport: this.mapSportName(event.sport_title),
+                league: event.sport_title,
+                participants: [playerName, teamName],
+                startTime: new Date(event.commence_time),
+                markets: []
+              }
+              processedMarkets.push(processedMarket)
+            }
+
+            // Add market to the processed market
+            processedMarket.markets.push({
+              marketType,
+              bookmaker: bookmaker.title,
+              odds
+            })
+          }
+        }
+      }
+
+      console.log(`Processed ${processedMarkets.length} player props events for ${sport}`)
+      return processedMarkets
     } catch (error) {
       console.error('Error fetching player props:', error)
-      throw error
+      // Return empty array on error - the route will fall back to mock data
+      return []
     }
   }
 
@@ -216,6 +301,7 @@ export class OddsApiService {
    */
   private mapPlayerPropsMarketType(apiMarketType: string): string {
     const mapping: Record<string, string> = {
+      // NFL
       'player_pass_tds': 'PLAYER_PASS_TDS',
       'player_pass_yds': 'PLAYER_PASS_YDS',
       'player_pass_completions': 'PLAYER_PASS_COMPLETIONS',
@@ -223,9 +309,22 @@ export class OddsApiService {
       'player_rush_att': 'PLAYER_RUSH_ATT',
       'player_rec_yds': 'PLAYER_REC_YDS',
       'player_rec_receptions': 'PLAYER_REC_RECEPTIONS',
-      'player_rec_tds': 'PLAYER_REC_TDS'
+      'player_rec_tds': 'PLAYER_REC_TDS',
+      // NBA
+      'player_points': 'PLAYER_POINTS',
+      'player_rebounds': 'PLAYER_REBOUNDS',
+      'player_assists': 'PLAYER_ASSISTS',
+      'player_steals': 'PLAYER_STEALS',
+      'player_blocks': 'PLAYER_BLOCKS',
+      'player_threes': 'PLAYER_THREES',
+      // MLB
+      'player_hits': 'PLAYER_HITS',
+      'player_home_runs': 'PLAYER_HOME_RUNS',
+      'player_strikeouts': 'PLAYER_STRIKEOUTS',
+      // NHL
+      'player_goals': 'PLAYER_GOALS'
     }
-    return mapping[apiMarketType] || 'PLAYER_PROPS'
+    return mapping[apiMarketType.toLowerCase()] || 'PLAYER_PROPS'
   }
 
   /**
