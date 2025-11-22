@@ -76,49 +76,68 @@ export default function Home() {
   const [playerProps, setPlayerProps] = useState<PlayerProp[]>([])
   const [loading, setLoading] = useState(false)
 
-  const fetchPlayerProps = useCallback(async () => {
-    if (!selectedStat) return
+  useEffect(() => {
+    // Handle both sport and stat changes in one effect to avoid race conditions
+    const categories = STAT_CATEGORIES[selectedSport]
     
-    setLoading(true)
-    try {
-      const params = new URLSearchParams({
-        sport: selectedSport,
-        marketType: selectedStat.marketType
-      })
-      
-      const response = await fetch(`/api/markets?${params}`)
-      const data = await response.json()
-      
-      if (response.ok) {
-        setPlayerProps(data.markets || [])
+    // If sport changed and we don't have a valid stat for it, set default stat
+    let statToUse = selectedStat
+    if (!statToUse || !categories?.some(c => c.key === statToUse?.key)) {
+      if (categories && categories.length > 0) {
+        statToUse = categories[0]
+        setSelectedStat(statToUse)
       } else {
-        console.error('Failed to fetch player props:', data.error)
+        setSelectedStat(null)
         setPlayerProps([])
+        setLoading(false)
+        return
       }
-    } catch (error) {
-      console.error('Error fetching player props:', error)
+    }
+
+    // Fetch data with current sport and stat
+    if (!statToUse) {
       setPlayerProps([])
-    } finally {
       setLoading(false)
+      return
+    }
+
+    let cancelled = false
+    setLoading(true)
+    setPlayerProps([]) // Clear previous results immediately
+
+    const params = new URLSearchParams({
+      sport: selectedSport,
+      marketType: statToUse.marketType
+    })
+    
+    fetch(`/api/markets?${params}`)
+      .then(response => response.json())
+      .then(data => {
+        if (!cancelled) {
+          if (data.markets) {
+            setPlayerProps(data.markets || [])
+          } else {
+            setPlayerProps([])
+          }
+        }
+      })
+      .catch(error => {
+        if (!cancelled) {
+          console.error('Error fetching player props:', error)
+          setPlayerProps([])
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      })
+
+    // Cleanup function to cancel fetch if component unmounts or dependencies change
+    return () => {
+      cancelled = true
     }
   }, [selectedSport, selectedStat])
-
-  useEffect(() => {
-    // Set default stat when sport changes
-    const categories = STAT_CATEGORIES[selectedSport]
-    if (categories && categories.length > 0) {
-      setSelectedStat(categories[0])
-    } else {
-      setSelectedStat(null)
-      setPlayerProps([])
-    }
-  }, [selectedSport])
-
-  useEffect(() => {
-    if (selectedStat) {
-      fetchPlayerProps()
-    }
-  }, [selectedStat, fetchPlayerProps])
 
   const formatOdds = (odds: number) => {
     if (isNaN(odds) || !isFinite(odds)) return 'N/A'
@@ -300,21 +319,21 @@ export default function Home() {
                         </svg>
                         <span className="text-sm font-medium">{engagement}</span>
                       </div>
-                    </div>
-
+            </div>
+            
                     {/* Middle Section - Player Info */}
                     <div className="mb-4">
                       <h3 className="text-white font-semibold text-lg mb-1 line-clamp-1">
                         {playerName}
-                      </h3>
+              </h3>
                       <p className="text-gray-400 text-sm mb-1">
                         {team} {selectedSport === 'NBA' ? '- ' + getPosition(prop.participants) : ''}
                       </p>
                       <p className="text-gray-500 text-xs line-clamp-2">
                         {matchup}
-                      </p>
-                    </div>
-
+              </p>
+            </div>
+            
                     {/* Bottom Section - Stat & Odds */}
                     <div className="mb-4">
                       <p className="text-gray-400 text-sm mb-2">{statLabel}</p>
@@ -323,9 +342,9 @@ export default function Home() {
                       </p>
                       <p className="text-gray-400 text-sm">
                         {formatOdds(odds)}
-                      </p>
-                    </div>
-
+              </p>
+            </div>
+            
                     {/* Action Buttons */}
                     <div className="grid grid-cols-2 gap-2">
                       <button className="bg-green-600 hover:bg-green-700 text-white py-2 px-3 rounded font-medium text-sm transition-colors">
@@ -334,8 +353,8 @@ export default function Home() {
                       <button className="bg-red-600 hover:bg-red-700 text-white py-2 px-3 rounded font-medium text-sm transition-colors">
                         Less
                       </button>
-                    </div>
-                  </div>
+            </div>
+          </div>
                 )
               })}
             </div>
