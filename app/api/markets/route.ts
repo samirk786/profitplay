@@ -534,7 +534,6 @@ function getComprehensivePlayerProps(): any {
       ],
     },
   }
-  return playerPropsData
 }
 
 // Mock markets data for fallback
