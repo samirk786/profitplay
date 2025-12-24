@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
       odds = selection === market.participants[0] ? oddsData.home : oddsData.away
     } else if (market.marketType === 'SPREAD') {
       odds = selection.includes('home') ? oddsData.home.odds : oddsData.away.odds
-    } else if (market.marketType === 'TOTAL' || market.marketType.startsWith('PLAYER_')) {
+    } else if (market.marketType === 'TOTAL' || market.marketType === 'PROPS' || market.marketType.startsWith('PLAYER_')) {
       // Handle player props and totals - selection is "over" or "under"
       if (selection === 'over' && oddsData.over) {
         odds = oddsData.over.odds || -110 // Default to -110 if odds not found

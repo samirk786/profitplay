@@ -162,7 +162,10 @@ export async function GET(request: NextRequest) {
         if (needsMockData && marketType) {
           console.log(`📝 Using mock player props data for ${sport} - ${marketType}`)
           console.log(`   ℹ️  Note: The Odds API may not support player props. Mock data used for demo.`)
-          markets = getMockPlayerProps(sport || 'NFL', marketType)
+          const mockMarkets = getMockPlayerProps(sport || 'NFL', marketType)
+          // Store mock markets in database so they can be referenced when placing bets
+          await syncMockPlayerPropsToDatabase(mockMarkets, sport || 'NFL', marketType)
+          markets = mockMarkets
         }
       } else {
         // For regular markets: if no data, use mock markets as fallback
@@ -334,6 +337,80 @@ async function syncPlayerPropsToDatabase(processedMarkets: any[], requestedMarke
   }
 }
 
+// Helper function to sync mock player props to database
+async function syncMockPlayerPropsToDatabase(mockMarkets: any[], sport: string, marketType: string) {
+  // Valid Prisma enum market types
+  const validMarketTypes = [
+    'MONEYLINE', 'SPREAD', 'TOTAL', 'PROPS',
+    'PLAYER_PASS_TDS', 'PLAYER_PASS_YDS', 'PLAYER_PASS_COMPLETIONS',
+    'PLAYER_RUSH_YDS', 'PLAYER_RUSH_ATT', 'PLAYER_REC_YDS',
+    'PLAYER_REC_RECEPTIONS', 'PLAYER_REC_TDS'
+  ]
+
+  try {
+    for (const market of mockMarkets) {
+      // Use a stable ID based on player name and market type (not timestamp)
+      // This ensures we can find the market when placing bets
+      const playerName = market._metadata?.player || market.participants[0] || 'unknown'
+      const stableId = `mock_${sport}_${marketType}_${playerName.replace(/\s+/g, '_').toLowerCase()}_${market._metadata?.team || 'unknown'}`
+
+      // Use PROPS as market type for unsupported types (works with Prisma schema)
+      const dbMarketType = marketType.startsWith('PLAYER_') && !validMarketTypes.includes(marketType)
+        ? 'PROPS'
+        : marketType
+
+      // Create or update market
+      const dbMarket = await prisma.market.upsert({
+        where: { id: stableId },
+        update: {
+          sport: market.sport,
+          league: market.league,
+          participants: market.participants,
+          startTime: market.startTime,
+          status: 'UPCOMING'
+        },
+        create: {
+          id: stableId,
+          sport: market.sport,
+          league: market.league,
+          eventId: market.eventId,
+          marketType: dbMarketType as any,
+          participants: market.participants,
+          startTime: market.startTime,
+          status: 'UPCOMING'
+        }
+      })
+
+      // Create odds snapshot if it doesn't exist (check if one exists in last 24 hours)
+      const recentSnapshot = await prisma.oddsSnapshot.findFirst({
+        where: {
+          marketId: dbMarket.id,
+          ts: {
+            gte: new Date(Date.now() - 24 * 60 * 60 * 1000)
+          }
+        }
+      })
+
+      if (!recentSnapshot && market.oddsSnapshots && market.oddsSnapshots[0]) {
+        await prisma.oddsSnapshot.create({
+          data: {
+            marketId: dbMarket.id,
+            bookmaker: 'MOCK',
+            lineJSON: market.oddsSnapshots[0].lineJSON
+          }
+        })
+      }
+
+      // Update the market ID in the returned data to use the stable ID
+      market.id = stableId
+    }
+    console.log(`✅ Synced ${mockMarkets.length} mock player props to database`)
+  } catch (error) {
+    console.error('Error syncing mock player props to database:', error)
+    // Don't throw - we still want to return the mock data even if sync fails
+  }
+}
+
 // Comprehensive player props data - 20+ players per category
 function getMockPlayerProps(sport: string, marketType: string): any[] {
   const playerPropsData = getComprehensivePlayerProps()
@@ -345,33 +422,39 @@ function getMockPlayerProps(sport: string, marketType: string): any[] {
 
   const baseTime = new Date(Date.now() + 24 * 60 * 60 * 1000) // Tomorrow
 
-  return players.map((p: any, index: number) => ({
-    id: `player_prop_${sport}_${marketType}_${index}_${Date.now()}`,
-    sport: sport,
-    league: sport === 'NBA' ? 'National Basketball Association' : 
-            sport === 'NFL' ? 'National Football League' :
-            sport === 'MLB' ? 'Major League Baseball' :
-            sport === 'NHL' ? 'National Hockey League' : 'Professional League',
-    eventId: `player_prop_${sport}_${Date.now()}_${index}`,
-    marketType: marketType,
-    participants: [p.player, p.team],
-    startTime: new Date(baseTime.getTime() + index * 60 * 60 * 1000),
-    status: 'UPCOMING',
-    oddsSnapshots: [{
-      lineJSON: {
-        over: { total: p.value, odds: p.odds },
-        under: { total: p.value, odds: p.odds }
-      },
-      ts: new Date()
-    }],
-    _metadata: {
-      player: p.player,
-      team: p.team,
-      jersey: p.jersey,
-      matchup: p.matchup,
-      engagement: p.engagement
+  return players.map((p: any, index: number) => {
+    // Use stable ID (will be updated by syncMockPlayerPropsToDatabase)
+    const playerName = p.player || 'unknown'
+    const stableId = `mock_${sport}_${marketType}_${playerName.replace(/\s+/g, '_').toLowerCase()}_${p.team || 'unknown'}`
+    
+    return {
+      id: stableId,
+      sport: sport,
+      league: sport === 'NBA' ? 'National Basketball Association' : 
+              sport === 'NFL' ? 'National Football League' :
+              sport === 'MLB' ? 'Major League Baseball' :
+              sport === 'NHL' ? 'National Hockey League' : 'Professional League',
+      eventId: `mock_${sport}_${playerName.replace(/\s+/g, '_').toLowerCase()}_${index}`,
+      marketType: marketType,
+      participants: [p.player, p.team],
+      startTime: new Date(baseTime.getTime() + index * 60 * 60 * 1000),
+      status: 'UPCOMING',
+      oddsSnapshots: [{
+        lineJSON: {
+          over: { total: p.value, odds: p.odds },
+          under: { total: p.value, odds: p.odds }
+        },
+        ts: new Date()
+      }],
+      _metadata: {
+        player: p.player,
+        team: p.team,
+        jersey: p.jersey,
+        matchup: p.matchup,
+        engagement: p.engagement
+      }
     }
-  }))
+  })
 }
 
 // Comprehensive player props data with 20+ players per category
