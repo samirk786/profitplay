@@ -48,17 +48,28 @@ export async function GET(request: NextRequest) {
       where.sport = sport
     }
 
+    // Check if this is a player props request (starts with PLAYER_)
+    const isPlayerPropsRequest = marketType && marketType.startsWith('PLAYER_')
+    
+    // Valid Prisma enum market types (only NFL player props are in schema)
+    const validMarketTypes = [
+      'MONEYLINE', 'SPREAD', 'TOTAL', 'PROPS',
+      'PLAYER_PASS_TDS', 'PLAYER_PASS_YDS', 'PLAYER_PASS_COMPLETIONS',
+      'PLAYER_RUSH_YDS', 'PLAYER_RUSH_ATT', 'PLAYER_REC_YDS',
+      'PLAYER_REC_RECEPTIONS', 'PLAYER_REC_TDS'
+    ]
+    
+    // Track if we should skip database query for unsupported player prop types
+    let skipDatabaseQuery = false
+    
     if (marketType && marketType !== 'ALL') {
-      // Map the market type to the correct Prisma enum value
-      const validMarketTypes = [
-        'MONEYLINE', 'SPREAD', 'TOTAL', 'PROPS',
-        'PLAYER_PASS_TDS', 'PLAYER_PASS_YDS', 'PLAYER_PASS_COMPLETIONS',
-        'PLAYER_RUSH_YDS', 'PLAYER_RUSH_ATT', 'PLAYER_REC_YDS',
-        'PLAYER_REC_RECEPTIONS', 'PLAYER_REC_TDS'
-      ]
-      
+      // For database queries, only use valid Prisma enum types
+      // For NBA/MLB/NHL player props that aren't in schema, we'll use mock data
       if (validMarketTypes.includes(marketType)) {
         where.marketType = marketType as any
+      } else if (isPlayerPropsRequest) {
+        // For unsupported player prop types (NBA/MLB/NHL), skip database query
+        skipDatabaseQuery = true
       }
     }
 
@@ -79,21 +90,24 @@ export async function GET(request: NextRequest) {
     
     try {
       // Step 1: Try to fetch from database first (real data if available)
-      markets = await prisma.market.findMany({
-        where,
-        include: {
-          oddsSnapshots: {
-            where: {
-              ts: {
-                gte: new Date(Date.now() - 30 * 60 * 1000) // Last 30 minutes
-              }
-            },
-            orderBy: { ts: 'desc' },
-            take: 1
-          }
-        },
-        orderBy: { startTime: 'asc' }
-      })
+      // Skip database query for unsupported player prop types (NBA/MLB/NHL)
+      if (!skipDatabaseQuery) {
+        markets = await prisma.market.findMany({
+          where,
+          include: {
+            oddsSnapshots: {
+              where: {
+                ts: {
+                  gte: new Date(Date.now() - 30 * 60 * 1000) // Last 30 minutes
+                }
+              },
+              orderBy: { ts: 'desc' },
+              take: 1
+            }
+          },
+          orderBy: { startTime: 'asc' }
+        })
+      }
 
       // Step 2: For player props, if no data or refresh requested, try fetching from API
       if (marketType && marketType.startsWith('PLAYER_')) {
@@ -142,7 +156,10 @@ export async function GET(request: NextRequest) {
         // - Integrating with a specialized player props API (OddsJam, MetaBet, etc.)
         // - Or implementing a scheduled job to sync player props from an API that supports them
         // Mock data is used here for demonstration/presentation purposes
-        if (markets.length === 0 || markets.every(m => !m.oddsSnapshots || m.oddsSnapshots.length === 0)) {
+        // For NBA/MLB/NHL player props not in schema, always use mock data
+        const isUnsupportedPlayerProp = isPlayerPropsRequest && marketType && !validMarketTypes.includes(marketType)
+        const needsMockData = isUnsupportedPlayerProp || markets.length === 0 || markets.every(m => !m.oddsSnapshots || m.oddsSnapshots.length === 0)
+        if (needsMockData && marketType) {
           console.log(`📝 Using mock player props data for ${sport} - ${marketType}`)
           console.log(`   ℹ️  Note: The Odds API may not support player props. Mock data used for demo.`)
           markets = getMockPlayerProps(sport || 'NFL', marketType)
