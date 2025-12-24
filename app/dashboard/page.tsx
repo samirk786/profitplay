@@ -178,24 +178,7 @@ export default function Dashboard() {
               <button
                 onClick={seedAdminData}
                 disabled={seeding}
-                style={{
-                  display: 'inline-block',
-                  padding: '0.75rem 1.5rem',
-                  backgroundColor: seeding ? '#666666' : 'white',
-                  color: '#121212',
-                  borderRadius: '8px',
-                  fontWeight: 600,
-                  border: 'none',
-                  cursor: seeding ? 'not-allowed' : 'pointer',
-                  transition: 'background-color 0.2s ease',
-                  fontSize: '1rem'
-                }}
-                onMouseEnter={(e) => {
-                  if (!seeding) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.9)'
-                }}
-                onMouseLeave={(e) => {
-                  if (!seeding) e.currentTarget.style.backgroundColor = 'white'
-                }}
+                className={seeding ? 'admin-seed-button admin-seed-button-disabled' : 'admin-seed-button'}
               >
                 {seeding ? 'Setting up...' : 'Set Up Admin Test Data'}
               </button>
