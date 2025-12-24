@@ -43,8 +43,18 @@ export default function Dashboard() {
 
     try {
       setLoading(true)
-      const response = await fetch(`/api/challenges?userId=${session.user.id}&state=ACTIVE`)
+      const response = await fetch(`/api/challenges?state=ACTIVE`, {
+        credentials: 'include' // Include cookies for authentication
+      })
+      
+      if (!response.ok) {
+        console.error('Failed to fetch challenge account:', response.status, response.statusText)
+        setChallengeAccount(null)
+        return
+      }
+
       const data = await response.json()
+      console.log('Challenge account data:', data) // Debug log
 
       if (data.challenges && data.challenges.length > 0) {
         const activeChallenge = data.challenges[0]
