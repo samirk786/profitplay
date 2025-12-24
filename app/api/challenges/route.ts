@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth/next'
 import { prisma } from '@/lib/prisma'
 import { createAuditLog, AuditActions } from '@/lib/audit-logger'
 import { handleError } from '@/lib/error-handler'
+import { authOptions } from '../auth/[...nextauth]/route'
 
 export const dynamic = 'force-dynamic'
 
@@ -88,18 +90,31 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session || !session.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
     const searchParams = request.nextUrl.searchParams
     const userId = searchParams.get('userId')
     const state = searchParams.get('state')
 
-    if (!userId) {
+    // Ensure user can only access their own data
+    const authenticatedUserId = session.user.id
+    const requestedUserId = userId || authenticatedUserId
+
+    if (requestedUserId !== authenticatedUserId) {
       return NextResponse.json(
-        { error: 'User ID is required' },
-        { status: 400 }
+        { error: 'Forbidden: You can only access your own data' },
+        { status: 403 }
       )
     }
 
-    const where: any = { userId }
+    const where: any = { userId: authenticatedUserId }
     
     if (state) {
       where.state = state

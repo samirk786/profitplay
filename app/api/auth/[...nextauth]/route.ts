@@ -3,6 +3,7 @@ import CredentialsProvider from 'next-auth/providers/credentials'
 import { PrismaAdapter } from '@next-auth/prisma-adapter'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
+import type { NextAuthOptions } from 'next-auth'
 
 // Ensure NEXTAUTH_URL is always set to prevent Invalid URL errors during build
 // Check for www subdomain and use HTTPS in production
@@ -35,7 +36,7 @@ if (!process.env.NEXTAUTH_SECRET) {
   console.warn('⚠️ NEXTAUTH_SECRET is not set! This may cause authentication issues.')
 }
 
-const handler = NextAuth({
+export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   secret: process.env.NEXTAUTH_SECRET,
   useSecureCookies: process.env.NODE_ENV === 'production',
@@ -121,6 +122,8 @@ const handler = NextAuth({
   pages: {
     signIn: '/auth/signin'
   }
-})
+}
+
+const handler = NextAuth(authOptions)
 
 export { handler as GET, handler as POST }

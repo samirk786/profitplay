@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import Header from '@/components/Header'
 
 interface ChallengeAccount {
@@ -20,32 +22,58 @@ interface ChallengeAccount {
 }
 
 export default function Dashboard() {
+  const { data: session, status } = useSession()
+  const router = useRouter()
   const [challengeAccount, setChallengeAccount] = useState<ChallengeAccount | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // TODO: Fetch user's challenge account from API
-    // For now, show mock data
-    setTimeout(() => {
-      setChallengeAccount({
-        id: 'mock-account',
-        startBalance: 10000,
-        equity: 10250,
-        highWaterMark: 10250,
-        state: 'ACTIVE',
-        ruleset: {
-          name: 'Standard Plan Rules',
-          profitTargetPct: 10,
-          maxDailyLossPct: 5,
-          maxDrawdownPct: 15,
-          maxStakePct: 3,
-        }
-      })
-      setLoading(false)
-    }, 1000)
-  }, [])
+    if (status === 'unauthenticated') {
+      router.push('/auth/signin')
+      return
+    }
 
-  if (loading) {
+    if (status === 'authenticated' && session?.user?.id) {
+      fetchChallengeAccount()
+    }
+  }, [status, session, router])
+
+  const fetchChallengeAccount = async () => {
+    if (!session?.user?.id) return
+
+    try {
+      setLoading(true)
+      const response = await fetch(`/api/challenges?userId=${session.user.id}&state=ACTIVE`)
+      const data = await response.json()
+
+      if (data.challenges && data.challenges.length > 0) {
+        const activeChallenge = data.challenges[0]
+        setChallengeAccount({
+          id: activeChallenge.id,
+          startBalance: activeChallenge.startBalance,
+          equity: activeChallenge.equity,
+          highWaterMark: activeChallenge.highWaterMark,
+          state: activeChallenge.state,
+          ruleset: {
+            name: activeChallenge.ruleset.name,
+            profitTargetPct: activeChallenge.ruleset.profitTargetPct,
+            maxDailyLossPct: activeChallenge.ruleset.maxDailyLossPct,
+            maxDrawdownPct: activeChallenge.ruleset.maxDrawdownPct,
+            maxStakePct: activeChallenge.ruleset.maxStakePct,
+          }
+        })
+      } else {
+        setChallengeAccount(null)
+      }
+    } catch (error) {
+      console.error('Error fetching challenge account:', error)
+      setChallengeAccount(null)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (status === 'loading' || loading) {
     return (
       <div className="App">
         <Header />
@@ -75,6 +103,10 @@ export default function Dashboard() {
         </div>
       </div>
     )
+  }
+
+  if (status === 'unauthenticated') {
+    return null // Will redirect
   }
 
   if (!challengeAccount) {
