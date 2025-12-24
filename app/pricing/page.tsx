@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Header from '@/components/Header'
 
 const plans = [
   {
@@ -50,81 +51,168 @@ const plans = [
 
 export default function Pricing() {
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <Link href="/" className="text-2xl font-bold text-gray-900">
-              ProfitPlay
-            </Link>
-            <nav className="flex space-x-8">
-              <Link href="/" className="text-gray-500 hover:text-gray-900">
-                Home
-              </Link>
-              <Link href="/auth/signin" className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
-                Sign In
-              </Link>
-            </nav>
-          </div>
-        </div>
-      </header>
+    <div className="App">
+      <Header />
 
-      {/* Pricing Section */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-        <div className="text-center mb-16">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+      <main style={{ 
+        maxWidth: '1200px', 
+        margin: '0 auto', 
+        padding: '4rem 2rem',
+        minHeight: 'calc(100vh - 80px)'
+      }}>
+        <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
+          <h1 style={{ 
+            fontSize: '3rem', 
+            fontWeight: 700, 
+            color: 'white', 
+            marginBottom: '1rem' 
+          }}>
             Choose Your Evaluation Plan
           </h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+          <p style={{ 
+            fontSize: '1.25rem', 
+            color: '#cccccc', 
+            maxWidth: '600px',
+            margin: '0 auto'
+          }}>
             Start your journey to becoming a disciplined, profitable evaluator. 
             All plans include risk-free simulation with real market data.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
+          gap: '2rem',
+          marginBottom: '5rem'
+        }}>
           {plans.map((plan) => (
             <div
               key={plan.name}
-              className={`relative bg-white rounded-2xl shadow-lg p-8 ${
-                plan.popular ? 'ring-2 ring-blue-500 scale-105' : ''
-              }`}
+              style={{
+                position: 'relative',
+                backgroundColor: '#1E1E1E',
+                border: plan.popular ? '2px solid #3B82F6' : '1px solid #FFFFFF',
+                borderRadius: '24px',
+                padding: '2rem',
+                transform: plan.popular ? 'scale(1.05)' : 'scale(1)',
+                transition: 'transform 0.2s ease'
+              }}
             >
               {plan.popular && (
-                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <span className="bg-blue-500 text-white px-4 py-1 rounded-full text-sm font-semibold">
+                <div style={{
+                  position: 'absolute',
+                  top: '-12px',
+                  left: '50%',
+                  transform: 'translateX(-50%)'
+                }}>
+                  <span style={{
+                    backgroundColor: '#3B82F6',
+                    color: 'white',
+                    padding: '0.5rem 1.5rem',
+                    borderRadius: '20px',
+                    fontSize: '0.875rem',
+                    fontWeight: 600
+                  }}>
                     Most Popular
                   </span>
                 </div>
               )}
               
-              <div className="text-center mb-8">
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">{plan.name}</h3>
-                <p className="text-gray-600 mb-4">{plan.description}</p>
-                <div className="flex items-baseline justify-center">
-                  <span className="text-5xl font-bold text-gray-900">${plan.price}</span>
-                  <span className="text-gray-500 ml-2">/month</span>
+              <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+                <h3 style={{ 
+                  fontSize: '1.75rem', 
+                  fontWeight: 700, 
+                  color: 'white', 
+                  marginBottom: '0.5rem' 
+                }}>
+                  {plan.name}
+                </h3>
+                <p style={{ 
+                  color: '#cccccc', 
+                  marginBottom: '1.5rem',
+                  fontSize: '1rem'
+                }}>
+                  {plan.description}
+                </p>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'baseline', 
+                  justifyContent: 'center',
+                  gap: '0.5rem'
+                }}>
+                  <span style={{ 
+                    fontSize: '3.5rem', 
+                    fontWeight: 700, 
+                    color: 'white' 
+                  }}>
+                    ${plan.price}
+                  </span>
+                  <span style={{ color: '#888888', fontSize: '1.125rem' }}>
+                    /month
+                  </span>
                 </div>
               </div>
 
-              <ul className="space-y-4 mb-8">
+              <ul style={{ 
+                listStyle: 'none', 
+                padding: 0, 
+                margin: '0 0 2rem 0',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1rem'
+              }}>
                 {plan.features.map((feature, index) => (
-                  <li key={index} className="flex items-start">
-                    <svg className="w-5 h-5 text-green-500 mr-3 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <li key={index} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                    <svg 
+                      style={{ 
+                        width: '20px', 
+                        height: '20px', 
+                        color: '#22C55E', 
+                        flexShrink: 0,
+                        marginTop: '2px'
+                      }} 
+                      fill="currentColor" 
+                      viewBox="0 0 20 20"
+                    >
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
-                    <span className="text-gray-700">{feature}</span>
+                    <span style={{ color: '#cccccc', fontSize: '0.9375rem', lineHeight: '1.5' }}>
+                      {feature}
+                    </span>
                   </li>
                 ))}
               </ul>
 
               <Link
                 href={`/auth/signup?plan=${plan.name.toLowerCase()}`}
-                className={`w-full block text-center py-3 px-6 rounded-lg font-semibold transition-colors ${
-                  plan.popular
-                    ? 'bg-blue-600 text-white hover:bg-blue-700'
-                    : 'bg-gray-900 text-white hover:bg-gray-800'
-                }`}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  textAlign: 'center',
+                  padding: '0.875rem',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  textDecoration: 'none',
+                  transition: 'background-color 0.2s ease',
+                  backgroundColor: plan.popular ? 'white' : 'transparent',
+                  color: plan.popular ? '#121212' : 'white',
+                  border: plan.popular ? 'none' : '1px solid white'
+                }}
+                onMouseEnter={(e) => {
+                  if (plan.popular) {
+                    e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.9)'
+                  } else {
+                    e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (plan.popular) {
+                    e.currentTarget.style.backgroundColor = 'white'
+                  } else {
+                    e.currentTarget.style.backgroundColor = 'transparent'
+                  }
+                }}
               >
                 Get Started
               </Link>
@@ -133,44 +221,76 @@ export default function Pricing() {
         </div>
 
         {/* FAQ Section */}
-        <div className="mt-20">
-          <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">
+        <div style={{ marginTop: '5rem' }}>
+          <h2 style={{ 
+            fontSize: '2rem', 
+            fontWeight: 700, 
+            textAlign: 'center', 
+            color: 'white', 
+            marginBottom: '3rem' 
+          }}>
             Frequently Asked Questions
           </h2>
-          <div className="max-w-3xl mx-auto space-y-8">
+          <div style={{ 
+            maxWidth: '800px', 
+            margin: '0 auto',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '2rem'
+          }}>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <h3 style={{ 
+                fontSize: '1.125rem', 
+                fontWeight: 600, 
+                color: 'white', 
+                marginBottom: '0.75rem' 
+              }}>
                 What is ProfitPlay?
               </h3>
-              <p className="text-gray-600">
+              <p style={{ color: '#cccccc', lineHeight: '1.6' }}>
                 ProfitPlay is a simulation-based evaluation platform that helps you develop 
                 disciplined performance skills using real market data without financial risk.
               </p>
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <h3 style={{ 
+                fontSize: '1.125rem', 
+                fontWeight: 600, 
+                color: 'white', 
+                marginBottom: '0.75rem' 
+              }}>
                 Is this real money wagering?
               </h3>
-              <p className="text-gray-600">
+              <p style={{ color: '#cccccc', lineHeight: '1.6' }}>
                 No, this is purely a simulation platform. No real money is wagered by users. 
                 We use real market data to create realistic evaluation scenarios.
               </p>
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <h3 style={{ 
+                fontSize: '1.125rem', 
+                fontWeight: 600, 
+                color: 'white', 
+                marginBottom: '0.75rem' 
+              }}>
                 What happens after I complete a challenge?
               </h3>
-              <p className="text-gray-600">
+              <p style={{ color: '#cccccc', lineHeight: '1.6' }}>
                 Upon successful completion of your evaluation, you'll be eligible for our 
                 funded program (coming soon) where you can manage real capital based on 
                 your proven performance.
               </p>
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <h3 style={{ 
+                fontSize: '1.125rem', 
+                fontWeight: 600, 
+                color: 'white', 
+                marginBottom: '0.75rem' 
+              }}>
                 Can I cancel my subscription anytime?
               </h3>
-              <p className="text-gray-600">
+              <p style={{ color: '#cccccc', lineHeight: '1.6' }}>
                 Yes, you can cancel your subscription at any time. Your evaluation progress 
                 will be saved and you can resume when you're ready.
               </p>

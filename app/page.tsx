@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import Header from '@/components/Header'
 import JerseyIcon from '@/components/JerseyIcon'
 
@@ -330,6 +331,26 @@ export default function Home() {
       <section className="hero-section">
         <h1 className="hero-heading">Earn It.</h1>
         <p className="hero-subtitle">Make your picks. Prove your edge.</p>
+        <div style={{ marginTop: '2rem' }}>
+          <Link
+            href="/pricing"
+            style={{
+              display: 'inline-block',
+              padding: '0.875rem 2rem',
+              backgroundColor: 'white',
+              color: '#121212',
+              borderRadius: '8px',
+              fontWeight: 600,
+              textDecoration: 'none',
+              transition: 'background-color 0.2s ease',
+              fontSize: '1rem'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.9)'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+          >
+            View Plans
+          </Link>
+        </div>
       </section>
 
       {/* Filter Bars */}

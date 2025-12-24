@@ -237,6 +237,40 @@ async function main() {
 
   console.log('✅ Created admin user:', adminUser.email)
 
+  // Give admin user a PRO subscription and challenge account for testing
+  const standardRuleset = rulesets.find(r => r.plan === SubscriptionPlan.STANDARD)
+  if (standardRuleset) {
+    // Create subscription for admin
+    const adminSubscription = await prisma.subscription.upsert({
+      where: { stripeCustomerId: `admin_${adminUser.id}` },
+      update: {},
+      create: {
+        userId: adminUser.id,
+        stripeCustomerId: `admin_${adminUser.id}`,
+        status: 'ACTIVE',
+        plan: SubscriptionPlan.STANDARD,
+        renewAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+      },
+    })
+    console.log('✅ Created admin subscription:', adminSubscription.id)
+
+    // Create challenge account for admin with some progress
+    const adminChallenge = await prisma.challengeAccount.upsert({
+      where: { id: `admin_challenge_${adminUser.id}` },
+      update: {},
+      create: {
+        id: `admin_challenge_${adminUser.id}`,
+        userId: adminUser.id,
+        rulesetId: standardRuleset.id,
+        startBalance: 10000,
+        equity: 10750, // Some profit to show progress
+        highWaterMark: 10750,
+        state: 'ACTIVE',
+      },
+    })
+    console.log('✅ Created admin challenge account:', adminChallenge.id)
+  }
+
   // Create a test member user
   const memberPassword = await bcrypt.hash('member123', 10)
   const memberUser = await prisma.user.upsert({
