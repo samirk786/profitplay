@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useSession } from 'next-auth/react'
+import Header from '@/components/Header'
 
 interface Bet {
   id: string
@@ -22,74 +24,89 @@ interface Bet {
 }
 
 export default function BetsPage() {
+  const { data: session } = useSession()
   const [bets, setBets] = useState<Bet[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('ALL')
   const [sportFilter, setSportFilter] = useState('ALL')
+  const [challengeAccountId, setChallengeAccountId] = useState<string | null>(null)
 
   useEffect(() => {
-    // TODO: Fetch user's bets from API
-    // For now, show mock data
-    setTimeout(() => {
-      setBets([
-        {
-          id: '1',
-          market: {
-            id: 'market-1',
-            sport: 'NBA',
-            participants: ['Los Angeles Lakers', 'Golden State Warriors'],
-            marketType: 'MONEYLINE',
-            startTime: '2024-01-15T20:00:00Z'
-          },
-          selection: 'Los Angeles Lakers',
-          stake: 100,
-          potentialPayout: 166.67,
-          status: 'WON',
-          placedAt: '2024-01-15T19:30:00Z',
-          settledAt: '2024-01-15T22:30:00Z',
-          pnl: 66.67
-        },
-        {
-          id: '2',
-          market: {
-            id: 'market-1',
-            sport: 'NBA',
-            participants: ['Los Angeles Lakers', 'Golden State Warriors'],
-            marketType: 'SPREAD',
-            startTime: '2024-01-15T20:00:00Z'
-          },
-          selection: 'Golden State Warriors +3.5',
-          stake: 150,
-          potentialPayout: 136.36,
-          status: 'LOST',
-          placedAt: '2024-01-15T19:25:00Z',
-          settledAt: '2024-01-15T22:30:00Z',
-          pnl: -150
-        },
-        {
-          id: '3',
-          market: {
-            id: 'market-2',
-            sport: 'NFL',
-            participants: ['Kansas City Chiefs', 'Buffalo Bills'],
-            marketType: 'MONEYLINE',
-            startTime: '2024-01-16T21:00:00Z'
-          },
-          selection: 'Kansas City Chiefs',
-          stake: 200,
-          potentialPayout: 166.67,
-          status: 'OPEN',
-          placedAt: '2024-01-16T20:30:00Z'
+    // Fetch challenge account ID first
+    if (session?.user?.id) {
+      fetchChallengeAccount()
+    }
+  }, [session])
+
+  useEffect(() => {
+    // Fetch bets once we have challenge account ID
+    if (challengeAccountId) {
+      fetchBets()
+    }
+  }, [challengeAccountId, filter])
+
+  const fetchChallengeAccount = async () => {
+    try {
+      const response = await fetch('/api/challenges?state=ACTIVE', {
+        credentials: 'include'
+      })
+      if (response.ok) {
+        const data = await response.json()
+        if (data.challenges && data.challenges.length > 0) {
+          setChallengeAccountId(data.challenges[0].id)
         }
-      ])
+      }
+    } catch (error) {
+      console.error('Error fetching challenge account:', error)
+    }
+  }
+
+  const fetchBets = async () => {
+    if (!challengeAccountId) return
+
+    try {
+      setLoading(true)
+      const url = `/api/bets?challengeAccountId=${challengeAccountId}${filter !== 'ALL' ? `&status=${filter}` : ''}`
+      const response = await fetch(url, {
+        credentials: 'include'
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        // Map the bets data to match our interface
+        const mappedBets: Bet[] = (data.bets || []).map((bet: any) => ({
+          id: bet.id,
+          market: {
+            id: bet.market.id,
+            sport: bet.market.sport,
+            participants: bet.market.participants || [],
+            marketType: bet.market.marketType,
+            startTime: bet.market.startTime
+          },
+          selection: bet.selection,
+          stake: bet.stake,
+          potentialPayout: bet.potentialPayout,
+          status: bet.status,
+          placedAt: bet.placedAt,
+          settledAt: bet.settledAt || undefined,
+          pnl: bet.settlements?.[0]?.resultJSON?.pnl || undefined
+        }))
+        setBets(mappedBets)
+      } else {
+        console.error('Failed to fetch bets:', response.statusText)
+        setBets([])
+      }
+    } catch (error) {
+      console.error('Error fetching bets:', error)
+      setBets([])
+    } finally {
       setLoading(false)
-    }, 1000)
-  }, [])
+    }
+  }
 
   const filteredBets = bets.filter(bet => {
-    const matchesStatus = filter === 'ALL' || bet.status === filter
     const matchesSport = sportFilter === 'ALL' || bet.market.sport === sportFilter
-    return matchesStatus && matchesSport
+    return matchesSport
   })
 
   const formatDate = (dateString: string) => {
@@ -97,110 +114,244 @@ export default function BetsPage() {
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   }
 
-  const getStatusColor = (status: string) => {
+  const getStatusStyle = (status: string) => {
     switch (status) {
       case 'WON':
-        return 'bg-green-100 text-green-800'
+        return {
+          backgroundColor: 'rgba(34, 197, 94, 0.2)',
+          color: '#22C55E',
+          borderColor: '#22C55E'
+        }
       case 'LOST':
-        return 'bg-red-100 text-red-800'
+        return {
+          backgroundColor: 'rgba(239, 68, 68, 0.2)',
+          color: '#EF4444',
+          borderColor: '#EF4444'
+        }
       case 'PUSH':
-        return 'bg-gray-100 text-gray-800'
+        return {
+          backgroundColor: 'rgba(156, 163, 175, 0.2)',
+          color: '#9CA3AF',
+          borderColor: '#9CA3AF'
+        }
       case 'OPEN':
-        return 'bg-yellow-100 text-yellow-800'
+        return {
+          backgroundColor: 'rgba(234, 179, 8, 0.2)',
+          color: '#EAB308',
+          borderColor: '#EAB308'
+        }
       default:
-        return 'bg-gray-100 text-gray-800'
+        return {
+          backgroundColor: 'rgba(156, 163, 175, 0.2)',
+          color: '#9CA3AF',
+          borderColor: '#9CA3AF'
+        }
     }
   }
 
   const totalPnl = bets.reduce((sum, bet) => sum + (bet.pnl || 0), 0)
-  const winRate = bets.filter(bet => bet.status === 'WON').length / bets.filter(bet => bet.status !== 'OPEN').length * 100
+  const settledBets = bets.filter(bet => bet.status !== 'OPEN')
+  const winRate = settledBets.length > 0 
+    ? (settledBets.filter(bet => bet.status === 'WON').length / settledBets.length * 100) 
+    : 0
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading your bets...</p>
+      <div className="App">
+        <Header />
+        <div style={{ 
+          minHeight: 'calc(100vh - 80px)', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center' 
+        }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{
+              display: 'inline-block',
+              width: '48px',
+              height: '48px',
+              border: '3px solid rgba(255, 255, 255, 0.3)',
+              borderTopColor: '#3B82F6',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite'
+            }}></div>
+            <style jsx>{`
+              @keyframes spin {
+                to { transform: rotate(360deg); }
+              }
+            `}</style>
+            <p style={{ marginTop: '1rem', color: '#cccccc' }}>Loading your bets...</p>
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <Link href="/" className="text-2xl font-bold text-gray-900">
-              ProfitPlay
-            </Link>
-            <nav className="flex space-x-8">
-              <Link href="/dashboard" className="text-gray-500 hover:text-gray-900">
-                Dashboard
-              </Link>
-              <Link href="/markets" className="text-gray-500 hover:text-gray-900">
-                Markets
-              </Link>
-              <Link href="/auth/signin" className="text-gray-500 hover:text-gray-900">
-                Sign Out
-              </Link>
-            </nav>
-          </div>
-        </div>
-      </header>
+    <div className="App">
+      <Header />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main style={{ 
+        maxWidth: '1200px', 
+        margin: '0 auto', 
+        padding: '2rem',
+        minHeight: 'calc(100vh - 80px)'
+      }}>
         {/* Page Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+        <div style={{ marginBottom: '2rem' }}>
+          <h1 style={{ 
+            fontSize: '2rem', 
+            fontWeight: 700, 
+            color: 'white', 
+            marginBottom: '0.5rem' 
+          }}>
             My Bets
           </h1>
-          <p className="text-gray-600">
+          <p style={{ color: '#cccccc', fontSize: '1.125rem' }}>
             Track your betting history and performance.
           </p>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-sm font-medium text-gray-500 mb-2">Total Bets</h3>
-            <p className="text-3xl font-bold text-gray-900">{bets.length}</p>
-          </div>
-          
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-sm font-medium text-gray-500 mb-2">Win Rate</h3>
-            <p className="text-3xl font-bold text-blue-600">
-              {isNaN(winRate) ? '0' : winRate.toFixed(1)}%
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
+          gap: '1.5rem', 
+          marginBottom: '2rem' 
+        }}>
+          <div style={{
+            backgroundColor: '#1E1E1E',
+            border: '1px solid #FFFFFF',
+            borderRadius: '16px',
+            padding: '1.5rem'
+          }}>
+            <h3 style={{ 
+              fontSize: '0.875rem', 
+              fontWeight: 500, 
+              color: '#888888', 
+              marginBottom: '0.5rem',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}>Total Bets</h3>
+            <p style={{ 
+              fontSize: '2rem', 
+              fontWeight: 700, 
+              color: 'white',
+              margin: 0
+            }}>
+              {bets.length}
             </p>
           </div>
           
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-sm font-medium text-gray-500 mb-2">Total P&L</h3>
-            <p className={`text-3xl font-bold ${totalPnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+          <div style={{
+            backgroundColor: '#1E1E1E',
+            border: '1px solid #FFFFFF',
+            borderRadius: '16px',
+            padding: '1.5rem'
+          }}>
+            <h3 style={{ 
+              fontSize: '0.875rem', 
+              fontWeight: 500, 
+              color: '#888888', 
+              marginBottom: '0.5rem',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}>Win Rate</h3>
+            <p style={{ 
+              fontSize: '2rem', 
+              fontWeight: 700, 
+              color: '#3B82F6',
+              margin: 0
+            }}>
+              {winRate.toFixed(1)}%
+            </p>
+          </div>
+          
+          <div style={{
+            backgroundColor: '#1E1E1E',
+            border: '1px solid #FFFFFF',
+            borderRadius: '16px',
+            padding: '1.5rem'
+          }}>
+            <h3 style={{ 
+              fontSize: '0.875rem', 
+              fontWeight: 500, 
+              color: '#888888', 
+              marginBottom: '0.5rem',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}>Total P&L</h3>
+            <p style={{ 
+              fontSize: '2rem', 
+              fontWeight: 700, 
+              color: totalPnl >= 0 ? '#22C55E' : '#EF4444',
+              margin: 0
+            }}>
               {totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(2)}
             </p>
           </div>
           
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-sm font-medium text-gray-500 mb-2">Open Bets</h3>
-            <p className="text-3xl font-bold text-yellow-600">
+          <div style={{
+            backgroundColor: '#1E1E1E',
+            border: '1px solid #FFFFFF',
+            borderRadius: '16px',
+            padding: '1.5rem'
+          }}>
+            <h3 style={{ 
+              fontSize: '0.875rem', 
+              fontWeight: 500, 
+              color: '#888888', 
+              marginBottom: '0.5rem',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}>Open Bets</h3>
+            <p style={{ 
+              fontSize: '2rem', 
+              fontWeight: 700, 
+              color: '#EAB308',
+              margin: 0
+            }}>
               {bets.filter(bet => bet.status === 'OPEN').length}
             </p>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="bg-white p-6 rounded-lg shadow mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div style={{
+          backgroundColor: '#1E1E1E',
+          border: '1px solid #FFFFFF',
+          borderRadius: '16px',
+          padding: '1.5rem',
+          marginBottom: '2rem'
+        }}>
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+            gap: '1rem' 
+          }}>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label style={{ 
+                display: 'block', 
+                fontSize: '0.875rem', 
+                fontWeight: 500, 
+                color: '#cccccc', 
+                marginBottom: '0.5rem' 
+              }}>
                 Filter by Status
               </label>
               <select
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  backgroundColor: '#121212',
+                  border: '1px solid #FFFFFF',
+                  borderRadius: '8px',
+                  color: 'white',
+                  fontSize: '0.875rem',
+                  cursor: 'pointer'
+                }}
               >
                 <option value="ALL">All Statuses</option>
                 <option value="OPEN">Open</option>
@@ -210,89 +361,143 @@ export default function BetsPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label style={{ 
+                display: 'block', 
+                fontSize: '0.875rem', 
+                fontWeight: 500, 
+                color: '#cccccc', 
+                marginBottom: '0.5rem' 
+              }}>
                 Filter by Sport
               </label>
               <select
                 value={sportFilter}
                 onChange={(e) => setSportFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  backgroundColor: '#121212',
+                  border: '1px solid #FFFFFF',
+                  borderRadius: '8px',
+                  color: 'white',
+                  fontSize: '0.875rem',
+                  cursor: 'pointer'
+                }}
               >
                 <option value="ALL">All Sports</option>
                 <option value="NBA">NBA</option>
                 <option value="NFL">NFL</option>
                 <option value="MLB">MLB</option>
+                <option value="NHL">NHL</option>
               </select>
             </div>
           </div>
         </div>
 
         {/* Bets List */}
-        <div className="space-y-4">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {filteredBets.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500">No bets found matching your criteria.</p>
+            <div style={{ 
+              textAlign: 'center', 
+              padding: '3rem',
+              backgroundColor: '#1E1E1E',
+              border: '1px solid #FFFFFF',
+              borderRadius: '16px'
+            }}>
+              <p style={{ color: '#cccccc', fontSize: '1.125rem' }}>
+                No bets found matching your criteria.
+              </p>
             </div>
           ) : (
-            filteredBets.map((bet) => (
-              <div key={bet.id} className="bg-white p-6 rounded-lg shadow">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      {bet.market.participants[0]} vs {bet.market.participants[1]}
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      {bet.market.sport} • {bet.market.marketType}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Placed: {formatDate(bet.placedAt)}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <span className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(bet.status)}`}>
-                      {bet.status}
-                    </span>
-                    {bet.settledAt && (
-                      <p className="text-sm text-gray-500 mt-1">
-                        Settled: {formatDate(bet.settledAt)}
+            filteredBets.map((bet) => {
+              const statusStyle = getStatusStyle(bet.status)
+              return (
+                <div 
+                  key={bet.id} 
+                  style={{
+                    backgroundColor: '#1E1E1E',
+                    border: '1px solid #FFFFFF',
+                    borderRadius: '16px',
+                    padding: '1.5rem'
+                  }}
+                >
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'flex-start', 
+                    marginBottom: '1rem' 
+                  }}>
+                    <div>
+                      <h3 style={{ 
+                        fontSize: '1.125rem', 
+                        fontWeight: 600, 
+                        color: 'white',
+                        marginBottom: '0.5rem'
+                      }}>
+                        {bet.market.participants.join(' vs ')}
+                      </h3>
+                      <p style={{ fontSize: '0.875rem', color: '#cccccc', marginBottom: '0.25rem' }}>
+                        {bet.market.sport} • {bet.market.marketType}
                       </p>
-                    )}
+                      <p style={{ fontSize: '0.875rem', color: '#888888' }}>
+                        Placed: {formatDate(bet.placedAt)}
+                      </p>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <span style={{
+                        display: 'inline-block',
+                        padding: '0.5rem 1rem',
+                        borderRadius: '20px',
+                        fontSize: '0.875rem',
+                        fontWeight: 600,
+                        ...statusStyle,
+                        border: `1px solid ${statusStyle.borderColor}`
+                      }}>
+                        {bet.status}
+                      </span>
+                      {bet.settledAt && (
+                        <p style={{ fontSize: '0.875rem', color: '#888888', marginTop: '0.5rem' }}>
+                          Settled: {formatDate(bet.settledAt)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', 
+                    gap: '1rem', 
+                    marginBottom: '1rem' 
+                  }}>
+                    <div>
+                      <p style={{ fontSize: '0.875rem', color: '#888888', marginBottom: '0.25rem' }}>Selection</p>
+                      <p style={{ fontWeight: 600, color: 'white' }}>{bet.selection}</p>
+                    </div>
+                    <div>
+                      <p style={{ fontSize: '0.875rem', color: '#888888', marginBottom: '0.25rem' }}>Stake</p>
+                      <p style={{ fontWeight: 600, color: 'white' }}>${bet.stake.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <p style={{ fontSize: '0.875rem', color: '#888888', marginBottom: '0.25rem' }}>Potential Payout</p>
+                      <p style={{ fontWeight: 600, color: 'white' }}>${bet.potentialPayout.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <p style={{ fontSize: '0.875rem', color: '#888888', marginBottom: '0.25rem' }}>P&L</p>
+                      <p style={{ 
+                        fontWeight: 600, 
+                        color: bet.pnl !== undefined 
+                          ? (bet.pnl >= 0 ? '#22C55E' : '#EF4444') 
+                          : '#888888' 
+                      }}>
+                        {bet.pnl !== undefined 
+                          ? (bet.pnl >= 0 ? '+' : '') + '$' + bet.pnl.toFixed(2) 
+                          : 'N/A'}
+                      </p>
+                    </div>
                   </div>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                  <div>
-                    <p className="text-sm text-gray-600">Selection</p>
-                    <p className="font-medium">{bet.selection}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Stake</p>
-                    <p className="font-medium">${bet.stake.toFixed(2)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Potential Payout</p>
-                    <p className="font-medium">${bet.potentialPayout.toFixed(2)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">P&L</p>
-                    <p className={`font-medium ${bet.pnl !== undefined ? (bet.pnl >= 0 ? 'text-green-600' : 'text-red-600') : 'text-gray-500'}`}>
-                      {bet.pnl !== undefined ? (bet.pnl >= 0 ? '+' : '') + bet.pnl.toFixed(2) : 'N/A'}
-                    </p>
-                  </div>
-                </div>
-
-                {bet.status === 'OPEN' && (
-                  <div className="flex space-x-4">
-                    <button className="text-blue-600 hover:text-blue-900 text-sm font-medium">
-                      View Market
-                    </button>
-                    <button className="text-red-600 hover:text-red-900 text-sm font-medium">
-                      Cancel Bet
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))
+              )
+            })
           )}
         </div>
       </main>

@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import Header from '@/components/Header'
 import JerseyIcon from '@/components/JerseyIcon'
 
@@ -73,6 +75,9 @@ const getPropKey = (sport: string, playerName: string, category: string) => {
 }
 
 export default function Home() {
+  const { data: session } = useSession()
+  const router = useRouter()
+
   // State to track selected picks - keyed by composite key (sport-playerName-category), values are "over", "under", or null
   const [selectedPicks, setSelectedPicks] = useState<Record<string, 'over' | 'under' | null>>({})
   
@@ -84,6 +89,10 @@ export default function Home() {
   
   // State for custom amount input
   const [customAmount, setCustomAmount] = useState("")
+
+  // State for challenge account ID
+  const [challengeAccountId, setChallengeAccountId] = useState<string | null>(null)
+  const [placingBet, setPlacingBet] = useState(false)
 
   // State for player props from API
   const [playerProps, setPlayerProps] = useState<PlayerProp[]>([])
@@ -100,6 +109,29 @@ export default function Home() {
 
   // State for active tab (Board or Account)
   const [activeTab, setActiveTab] = useState("Board")
+
+  // Fetch challenge account ID
+  useEffect(() => {
+    if (session?.user?.id) {
+      fetchChallengeAccount()
+    }
+  }, [session])
+
+  const fetchChallengeAccount = async () => {
+    try {
+      const response = await fetch('/api/challenges?state=ACTIVE', {
+        credentials: 'include'
+      })
+      if (response.ok) {
+        const data = await response.json()
+        if (data.challenges && data.challenges.length > 0) {
+          setChallengeAccountId(data.challenges[0].id)
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching challenge account:', error)
+    }
+  }
 
   // Fetch player props from API
   useEffect(() => {
@@ -184,7 +216,7 @@ export default function Home() {
     return matchesMatchup
   })
 
-  // Derive active picks with choice field
+  // Derive active picks with choice field and market ID
   const activePicks = playerProps
     .filter(player => {
       const key = getPropKey(player.sport, player.playerName, player.category)
@@ -196,6 +228,7 @@ export default function Home() {
       return {
         ...player,
         choice, // "over" or "under"
+        marketId: player.id, // Market ID from the API
       }
     })
   const picksCount = activePicks.length
@@ -302,8 +335,63 @@ export default function Home() {
   const isPlayDisabled = picksCount < 2 || multiplier === null || !betAmount || betAmount <= 0
 
   // Handler for Play button click
-  const handlePlay = () => {
-    console.log("Play clicked", { activePicks, betAmount, multiplier, payout })
+  const handlePlay = async () => {
+    if (!challengeAccountId) {
+      alert('Please log in and ensure you have an active challenge account.')
+      router.push('/auth/signin')
+      return
+    }
+
+    if (picksCount < 2 || !betAmount || betAmount <= 0) {
+      alert('Please select at least 2 picks and enter a bet amount.')
+      return
+    }
+
+    setPlacingBet(true)
+
+    try {
+      // Place bets for each pick
+      const betPromises = activePicks.map(async (pick) => {
+        const response = await fetch('/api/bets', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            challengeAccountId,
+            marketId: pick.marketId,
+            selection: pick.choice, // "over" or "under"
+            stake: betAmount / picksCount // Divide bet amount equally among picks
+          })
+        })
+
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || 'Failed to place bet')
+        }
+
+        return response.json()
+      })
+
+      const results = await Promise.all(betPromises)
+      console.log('Bets placed successfully:', results)
+
+      // Clear selections and bet slip
+      setSelectedPicks({})
+      setBetAmount(null)
+      setCustomAmount("")
+      setIsBetSlipOpen(false)
+
+      // Show success message and redirect to bets page
+      alert(`Successfully placed ${results.length} bet(s)!`)
+      router.push('/dashboard/bets')
+    } catch (error: any) {
+      console.error('Error placing bets:', error)
+      alert(`Failed to place bets: ${error.message}`)
+    } finally {
+      setPlacingBet(false)
+    }
   }
 
   // Handler for sport change

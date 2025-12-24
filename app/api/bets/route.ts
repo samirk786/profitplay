@@ -51,8 +51,16 @@ export async function POST(request: NextRequest) {
       odds = selection === market.participants[0] ? oddsData.home : oddsData.away
     } else if (market.marketType === 'SPREAD') {
       odds = selection.includes('home') ? oddsData.home.odds : oddsData.away.odds
-    } else if (market.marketType === 'TOTAL') {
-      odds = selection.includes('over') ? oddsData.over.odds : oddsData.under.odds
+    } else if (market.marketType === 'TOTAL' || market.marketType.startsWith('PLAYER_')) {
+      // Handle player props and totals - selection is "over" or "under"
+      if (selection === 'over' && oddsData.over) {
+        odds = oddsData.over.odds || -110 // Default to -110 if odds not found
+      } else if (selection === 'under' && oddsData.under) {
+        odds = oddsData.under.odds || -110
+      } else {
+        // Fallback: try to find odds in the data structure
+        odds = oddsData.over?.odds || oddsData.under?.odds || -110
+      }
     } else {
       return NextResponse.json(
         { error: 'Unsupported market type' },
@@ -78,6 +86,19 @@ export async function POST(request: NextRequest) {
     // Calculate potential payout
     const potentialPayout = calculatePotentialPayout(stake, odds)
 
+    // Get challenge account to get user ID
+    const challengeAccount = await prisma.challengeAccount.findUnique({
+      where: { id: challengeAccountId },
+      select: { userId: true }
+    })
+
+    if (!challengeAccount) {
+      return NextResponse.json(
+        { error: 'Challenge account not found' },
+        { status: 404 }
+      )
+    }
+
     // Create bet
     const bet = await prisma.bet.create({
       data: {
@@ -95,9 +116,9 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // Create audit log
+    // Create audit log with actual user ID
     await createAuditLog({
-      userId: challengeAccountId, // This should be the actual user ID
+      userId: challengeAccount.userId,
       action: AuditActions.BET_PLACED,
       payload: {
         betId: bet.id,
