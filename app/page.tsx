@@ -65,7 +65,7 @@ interface PlayerProp {
   category: string
   sport: string
   jerseyNumber: number | null
-  matchup: string
+    matchup: string
   gameDateTime: string | null
 }
 
@@ -142,20 +142,20 @@ export default function Home() {
         
         const marketType = CATEGORY_TO_MARKET_TYPE[selectedSport]?.[selectedCategory]
         if (!marketType) {
-          setPlayerProps([])
+      setPlayerProps([])
           setLoadingProps(false)
-          return
-        }
+      return
+    }
 
-        const params = new URLSearchParams({
-          sport: selectedSport,
+    const params = new URLSearchParams({
+      sport: selectedSport,
           marketType: marketType
         })
         
         const response = await fetch(`/api/markets?${params}`)
         const data = await response.json()
         
-        if (data.markets) {
+          if (data.markets) {
           // Map API response to PlayerProp format
           const mappedProps: PlayerProp[] = data.markets
             .filter((market: any) => market._metadata) // Only player props have metadata
@@ -414,7 +414,7 @@ export default function Home() {
   return (
     <div className="App">
       <Header />
-
+      
       {/* Hero Section */}
       <section className="hero-section">
         <h1 className="hero-heading">Earn It.</h1>
@@ -609,7 +609,7 @@ export default function Home() {
                 ) : (
                   <span>Select 2–8 picks</span>
                 )}
-              </div>
+            </div>
             </div>
           ) : (
             <div className="bet-slip-panel">
@@ -648,8 +648,8 @@ export default function Home() {
                   ) : (
                     <span>Select 2–8 picks to unlock multiplier</span>
                   )}
-                </div>
-
+            </div>
+            
                 <div className="bet-slip-bet-sizes">
                   {betOptions.map((option) => (
                     <button
@@ -660,8 +660,8 @@ export default function Home() {
                       ${option}
                     </button>
                   ))}
-                </div>
-
+            </div>
+            
                 <input
                   type="number"
                   className="bet-slip-custom-input"
@@ -676,16 +676,16 @@ export default function Home() {
                   ) : (
                     <span>Payout: $0</span>
                   )}
-                </div>
-
+            </div>
+            
                 <button
-                  className={`bet-slip-play-btn ${isPlayDisabled ? 'bet-slip-play-btn-disabled' : ''}`}
+                  className={`bet-slip-play-btn ${isPlayDisabled || placingBet ? 'bet-slip-play-btn-disabled' : ''}`}
                   onClick={handlePlay}
-                  disabled={isPlayDisabled}
+                  disabled={isPlayDisabled || placingBet}
                 >
-                  Play
-                </button>
-              </div>
+                  {placingBet ? 'Placing Bets...' : 'Play'}
+                      </button>
+            </div>
             </div>
           )}
         </div>
