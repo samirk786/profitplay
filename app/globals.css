@@ -938,3 +938,52 @@ body {
     padding: 1rem;
   }
 }
+
+/* Pricing Page Styles */
+.pricing-link-button {
+  display: block;
+  width: 100%;
+  text-align: center;
+  padding: 0.875rem;
+  border-radius: 8px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+  border: none;
+}
+
+.pricing-link-button-popular {
+  background-color: white;
+  color: #121212;
+}
+
+.pricing-link-button-popular:hover {
+  background-color: rgba(255, 255, 255, 0.9);
+}
+
+.pricing-link-button-secondary {
+  background-color: transparent;
+  color: white;
+  border: 1px solid white;
+}
+
+.pricing-link-button-secondary:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.8);
+}
+
+.hero-cta-button {
+  display: inline-block;
+  padding: 0.875rem 2rem;
+  background-color: white;
+  color: #121212;
+  border-radius: 8px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 0.2s ease;
+  font-size: 1rem;
+}
+
+.hero-cta-button:hover {
+  background-color: rgba(255, 255, 255, 0.9);
+}

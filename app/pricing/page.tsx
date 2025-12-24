@@ -1,5 +1,8 @@
+'use client'
+
 import Link from 'next/link'
 import Header from '@/components/Header'
+import { useState } from 'react'
 
 const plans = [
   {
@@ -186,33 +189,7 @@ export default function Pricing() {
 
               <Link
                 href={`/auth/signup?plan=${plan.name.toLowerCase()}`}
-                style={{
-                  display: 'block',
-                  width: '100%',
-                  textAlign: 'center',
-                  padding: '0.875rem',
-                  borderRadius: '8px',
-                  fontWeight: 600,
-                  textDecoration: 'none',
-                  transition: 'background-color 0.2s ease',
-                  backgroundColor: plan.popular ? 'white' : 'transparent',
-                  color: plan.popular ? '#121212' : 'white',
-                  border: plan.popular ? 'none' : '1px solid white'
-                }}
-                onMouseEnter={(e) => {
-                  if (plan.popular) {
-                    e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.9)'
-                  } else {
-                    e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (plan.popular) {
-                    e.currentTarget.style.backgroundColor = 'white'
-                  } else {
-                    e.currentTarget.style.backgroundColor = 'transparent'
-                  }
-                }}
+                className={`pricing-link-button ${plan.popular ? 'pricing-link-button-popular' : 'pricing-link-button-secondary'}`}
               >
                 Get Started
               </Link>

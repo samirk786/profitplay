@@ -334,19 +334,7 @@ export default function Home() {
         <div style={{ marginTop: '2rem' }}>
           <Link
             href="/pricing"
-            style={{
-              display: 'inline-block',
-              padding: '0.875rem 2rem',
-              backgroundColor: 'white',
-              color: '#121212',
-              borderRadius: '8px',
-              fontWeight: 600,
-              textDecoration: 'none',
-              transition: 'background-color 0.2s ease',
-              fontSize: '1rem'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.9)'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+            className="hero-cta-button"
           >
             View Plans
           </Link>
