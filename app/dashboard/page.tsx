@@ -26,6 +26,7 @@ export default function Dashboard() {
   const router = useRouter()
   const [challengeAccount, setChallengeAccount] = useState<ChallengeAccount | null>(null)
   const [loading, setLoading] = useState(true)
+  const [seeding, setSeeding] = useState(false)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -80,6 +81,35 @@ export default function Dashboard() {
       setChallengeAccount(null)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const seedAdminData = async () => {
+    if (!session?.user?.id || session.user.role !== 'ADMIN') return
+
+    try {
+      setSeeding(true)
+      const response = await fetch('/api/admin/seed-admin-data', {
+        method: 'POST',
+        credentials: 'include'
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        alert(`Failed to seed admin data: ${error.error || 'Unknown error'}`)
+        return
+      }
+
+      const data = await response.json()
+      console.log('Admin data seeded:', data)
+      
+      // Refresh the challenge account
+      await fetchChallengeAccount()
+    } catch (error) {
+      console.error('Error seeding admin data:', error)
+      alert('Failed to seed admin data. Please try again.')
+    } finally {
+      setSeeding(false)
     }
   }
 
@@ -140,25 +170,53 @@ export default function Dashboard() {
               No Active Challenge
             </h1>
             <p style={{ color: '#cccccc', marginBottom: '2rem', fontSize: '1.125rem' }}>
-              You don't have an active challenge account. Subscribe to a plan to get started.
+              {session?.user?.role === 'ADMIN' 
+                ? 'You don\'t have an active challenge account. Click below to set up admin test data.'
+                : 'You don\'t have an active challenge account. Subscribe to a plan to get started.'}
             </p>
-            <Link
-              href="/pricing"
-              style={{
-                display: 'inline-block',
-                padding: '0.75rem 1.5rem',
-                backgroundColor: 'white',
-                color: '#121212',
-                borderRadius: '8px',
-                fontWeight: 600,
-                textDecoration: 'none',
-                transition: 'background-color 0.2s ease'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.9)'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
-            >
-              View Plans
-            </Link>
+            {session?.user?.role === 'ADMIN' ? (
+              <button
+                onClick={seedAdminData}
+                disabled={seeding}
+                style={{
+                  display: 'inline-block',
+                  padding: '0.75rem 1.5rem',
+                  backgroundColor: seeding ? '#666666' : 'white',
+                  color: '#121212',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  border: 'none',
+                  cursor: seeding ? 'not-allowed' : 'pointer',
+                  transition: 'background-color 0.2s ease',
+                  fontSize: '1rem'
+                }}
+                onMouseEnter={(e) => {
+                  if (!seeding) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.9)'
+                }}
+                onMouseLeave={(e) => {
+                  if (!seeding) e.currentTarget.style.backgroundColor = 'white'
+                }}
+              >
+                {seeding ? 'Setting up...' : 'Set Up Admin Test Data'}
+              </button>
+            ) : (
+              <Link
+                href="/pricing"
+                style={{
+                  display: 'inline-block',
+                  padding: '0.75rem 1.5rem',
+                  backgroundColor: 'white',
+                  color: '#121212',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  textDecoration: 'none',
+                  transition: 'background-color 0.2s ease'
+                }}
+                className="hero-cta-button"
+              >
+                View Plans
+              </Link>
+            )}
           </div>
         </div>
       </div>
@@ -461,8 +519,7 @@ export default function Dashboard() {
                 border: 'none',
                 cursor: 'pointer'
               }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.9)'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+              className="hero-cta-button"
             >
               Browse Markets
             </Link>
