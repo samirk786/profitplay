@@ -496,21 +496,28 @@ export default function BetsPage() {
                       <p style={{ fontSize: '0.875rem', color: '#888888', marginBottom: '0.5rem' }}>
                         {isParlay ? 'Picks:' : 'Selection:'}
                       </p>
-                      {betGroup.map((bet, idx) => (
-                        <div key={bet.id} style={{ marginBottom: idx < betGroup.length - 1 ? '0.75rem' : '0' }}>
-                          <p style={{ 
-                            fontSize: '1rem', 
-                            fontWeight: 600, 
-                            color: 'white',
-                            marginBottom: '0.25rem'
-                          }}>
-                            {bet.selection} • {bet.market.sport}
-                          </p>
-                          <p style={{ fontSize: '0.875rem', color: '#cccccc' }}>
-                            {bet.market.participants.join(' vs ')}
-                          </p>
-                        </div>
-                      ))}
+                      {betGroup.map((bet, idx) => {
+                        // Format selection display - capitalize first letter
+                        const selectionDisplay = bet.selection ? 
+                          bet.selection.charAt(0).toUpperCase() + bet.selection.slice(1) : 
+                          'N/A'
+                        
+                        return (
+                          <div key={bet.id} style={{ marginBottom: idx < betGroup.length - 1 ? '0.75rem' : '0' }}>
+                            <p style={{ 
+                              fontSize: '1rem', 
+                              fontWeight: 600, 
+                              color: 'white',
+                              marginBottom: '0.25rem'
+                            }}>
+                              {selectionDisplay} • {bet.market.sport}
+                            </p>
+                            <p style={{ fontSize: '0.875rem', color: '#cccccc' }}>
+                              {bet.market.participants.length > 0 ? bet.market.participants.join(' vs ') : 'N/A'}
+                            </p>
+                          </div>
+                        )
+                      })}
                       <p style={{ fontSize: '0.875rem', color: '#888888', marginTop: '0.75rem' }}>
                         Placed: {formatDate(firstBet.placedAt)}
                       </p>
