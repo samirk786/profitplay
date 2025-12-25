@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import React from 'react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import Header from '@/components/Header'
@@ -109,34 +108,30 @@ export default function BetsPage() {
     }
   }
 
-  // Group bets by parlayId (calculate this after bets are loaded)
-  const groupedBets = React.useMemo(() => {
-    return bets.reduce((groups: Record<string, Bet[]>, bet) => {
-      if (bet.parlayId) {
-        if (!groups[bet.parlayId]) {
-          groups[bet.parlayId] = []
-        }
-        groups[bet.parlayId].push(bet)
-      } else {
-        // Individual bets (no parlayId) get their own group
-        groups[bet.id] = [bet]
+  // Group bets by parlayId
+  const groupedBets = bets.reduce((groups: Record<string, Bet[]>, bet) => {
+    if (bet.parlayId) {
+      if (!groups[bet.parlayId]) {
+        groups[bet.parlayId] = []
       }
-      return groups
-    }, {})
-  }, [bets])
+      groups[bet.parlayId].push(bet)
+    } else {
+      // Individual bets (no parlayId) get their own group
+      groups[bet.id] = [bet]
+    }
+    return groups
+  }, {})
 
   // Convert to array and filter by sport
-  const betGroups = React.useMemo(() => {
-    return Object.values(groupedBets)
-      .filter(group => {
-        // Check if any bet in the group matches the sport filter
-        return sportFilter === 'ALL' || group.some(bet => bet.market.sport === sportFilter)
-      })
-      .filter(group => {
-        // Filter by status if needed (all bets in a parlay share the same status)
-        return filter === 'ALL' || group[0]?.status === filter
-      })
-  }, [groupedBets, sportFilter, filter])
+  const betGroups = Object.values(groupedBets)
+    .filter(group => {
+      // Check if any bet in the group matches the sport filter
+      return sportFilter === 'ALL' || group.some(bet => bet.market.sport === sportFilter)
+    })
+    .filter(group => {
+      // Filter by status if needed (all bets in a parlay share the same status)
+      return filter === 'ALL' || group[0]?.status === filter
+    })
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -179,19 +174,14 @@ export default function BetsPage() {
   }
 
   // Calculate stats from unique bets (don't double-count parlay bets)
-  const stats = React.useMemo(() => {
-    const uniqueBets = Object.values(groupedBets).map(group => group[0])
-    const totalPnl = uniqueBets.reduce((sum, bet) => sum + (bet.pnl || 0), 0)
-    const settledBets = uniqueBets.filter(bet => bet.status !== 'OPEN')
-    const winRate = settledBets.length > 0 
-      ? (settledBets.filter(bet => bet.status === 'WON').length / settledBets.length * 100) 
-      : 0
-    const totalBetsCount = Object.keys(groupedBets).length // Count bet groups, not individual bets
-    const openBetsCount = uniqueBets.filter(bet => bet.status === 'OPEN').length
-    return { totalPnl, winRate, totalBetsCount, openBetsCount }
-  }, [groupedBets])
-
-  const { totalPnl, winRate, totalBetsCount, openBetsCount } = stats
+  const uniqueBets = Object.values(groupedBets).map(group => group[0])
+  const totalPnl = uniqueBets.reduce((sum, bet) => sum + (bet.pnl || 0), 0)
+  const settledBets = uniqueBets.filter(bet => bet.status !== 'OPEN')
+  const winRate = settledBets.length > 0 
+    ? (settledBets.filter(bet => bet.status === 'WON').length / settledBets.length * 100) 
+    : 0
+  const totalBetsCount = Object.keys(groupedBets).length // Count bet groups, not individual bets
+  const openBetsCount = uniqueBets.filter(bet => bet.status === 'OPEN').length
 
   if (loading) {
     return (
@@ -456,7 +446,6 @@ export default function BetsPage() {
               const groupPnl = firstBet.pnl || 0
               
               return (
-              const statusStyle = getStatusStyle(bet.status)
                 <div 
                   key={isParlay ? firstBet.parlayId : firstBet.id} 
                   style={{
