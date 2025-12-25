@@ -169,7 +169,14 @@ export async function GET(request: NextRequest) {
       orderBy: { placedAt: 'desc' }
     })
 
-    return NextResponse.json({ bets })
+    // Include parlayId and parlayMultiplier in response
+    const betsWithParlayInfo = bets.map(bet => ({
+      ...bet,
+      parlayId: bet.parlayId,
+      parlayMultiplier: bet.parlayMultiplier
+    }))
+
+    return NextResponse.json({ bets: betsWithParlayInfo })
   } catch (error) {
     console.error('Bets fetch error:', error)
     return NextResponse.json(

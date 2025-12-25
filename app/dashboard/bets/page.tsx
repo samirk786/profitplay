@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import React from 'react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import Header from '@/components/Header'
@@ -21,6 +22,8 @@ interface Bet {
   placedAt: string
   settledAt?: string
   pnl?: number
+  parlayId?: string | null
+  parlayMultiplier?: number | null
 }
 
 export default function BetsPage() {
@@ -89,7 +92,9 @@ export default function BetsPage() {
           status: bet.status,
           placedAt: bet.placedAt,
           settledAt: bet.settledAt || undefined,
-          pnl: bet.settlements?.[0]?.resultJSON?.pnl || undefined
+          pnl: bet.settlements?.[0]?.resultJSON?.pnl || undefined,
+          parlayId: bet.parlayId || undefined,
+          parlayMultiplier: bet.parlayMultiplier || undefined
         }))
         setBets(mappedBets)
       } else {
@@ -104,10 +109,34 @@ export default function BetsPage() {
     }
   }
 
-  const filteredBets = bets.filter(bet => {
-    const matchesSport = sportFilter === 'ALL' || bet.market.sport === sportFilter
-    return matchesSport
-  })
+  // Group bets by parlayId (calculate this after bets are loaded)
+  const groupedBets = React.useMemo(() => {
+    return bets.reduce((groups: Record<string, Bet[]>, bet) => {
+      if (bet.parlayId) {
+        if (!groups[bet.parlayId]) {
+          groups[bet.parlayId] = []
+        }
+        groups[bet.parlayId].push(bet)
+      } else {
+        // Individual bets (no parlayId) get their own group
+        groups[bet.id] = [bet]
+      }
+      return groups
+    }, {})
+  }, [bets])
+
+  // Convert to array and filter by sport
+  const betGroups = React.useMemo(() => {
+    return Object.values(groupedBets)
+      .filter(group => {
+        // Check if any bet in the group matches the sport filter
+        return sportFilter === 'ALL' || group.some(bet => bet.market.sport === sportFilter)
+      })
+      .filter(group => {
+        // Filter by status if needed (all bets in a parlay share the same status)
+        return filter === 'ALL' || group[0]?.status === filter
+      })
+  }, [groupedBets, sportFilter, filter])
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -149,11 +178,20 @@ export default function BetsPage() {
     }
   }
 
-  const totalPnl = bets.reduce((sum, bet) => sum + (bet.pnl || 0), 0)
-  const settledBets = bets.filter(bet => bet.status !== 'OPEN')
-  const winRate = settledBets.length > 0 
-    ? (settledBets.filter(bet => bet.status === 'WON').length / settledBets.length * 100) 
-    : 0
+  // Calculate stats from unique bets (don't double-count parlay bets)
+  const stats = React.useMemo(() => {
+    const uniqueBets = Object.values(groupedBets).map(group => group[0])
+    const totalPnl = uniqueBets.reduce((sum, bet) => sum + (bet.pnl || 0), 0)
+    const settledBets = uniqueBets.filter(bet => bet.status !== 'OPEN')
+    const winRate = settledBets.length > 0 
+      ? (settledBets.filter(bet => bet.status === 'WON').length / settledBets.length * 100) 
+      : 0
+    const totalBetsCount = Object.keys(groupedBets).length // Count bet groups, not individual bets
+    const openBetsCount = uniqueBets.filter(bet => bet.status === 'OPEN').length
+    return { totalPnl, winRate, totalBetsCount, openBetsCount }
+  }, [groupedBets])
+
+  const { totalPnl, winRate, totalBetsCount, openBetsCount } = stats
 
   if (loading) {
     return (
@@ -239,7 +277,7 @@ export default function BetsPage() {
               color: 'white',
               margin: 0
             }}>
-              {bets.length}
+              {totalBetsCount}
             </p>
           </div>
           
@@ -311,7 +349,7 @@ export default function BetsPage() {
               color: '#EAB308',
               margin: 0
             }}>
-              {bets.filter(bet => bet.status === 'OPEN').length}
+              {openBetsCount}
             </p>
           </div>
         </div>
@@ -396,7 +434,7 @@ export default function BetsPage() {
 
         {/* Bets List */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {filteredBets.length === 0 ? (
+          {betGroups.length === 0 ? (
             <div style={{ 
               textAlign: 'center', 
               padding: '3rem',
@@ -409,11 +447,18 @@ export default function BetsPage() {
               </p>
             </div>
           ) : (
-            filteredBets.map((bet) => {
-              const statusStyle = getStatusStyle(bet.status)
+            betGroups.map((betGroup) => {
+              const firstBet = betGroup[0]
+              const isParlay = betGroup.length > 1 && firstBet.parlayId
+              const statusStyle = getStatusStyle(firstBet.status)
+              const totalStake = isParlay ? firstBet.stake : firstBet.stake // For parlays, stake is the same for all bets
+              const totalPayout = isParlay ? firstBet.potentialPayout : firstBet.potentialPayout
+              const groupPnl = firstBet.pnl || 0
+              
               return (
+              const statusStyle = getStatusStyle(bet.status)
                 <div 
-                  key={bet.id} 
+                  key={isParlay ? firstBet.parlayId : firstBet.id} 
                   style={{
                     backgroundColor: '#1E1E1E',
                     border: '1px solid #FFFFFF',
@@ -421,29 +466,67 @@ export default function BetsPage() {
                     padding: '1.5rem'
                   }}
                 >
+                  {isParlay && (
+                    <div style={{ 
+                      marginBottom: '1rem',
+                      paddingBottom: '1rem',
+                      borderBottom: '1px solid #333333'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <h2 style={{ 
+                          fontSize: '1.25rem', 
+                          fontWeight: 700, 
+                          color: 'white',
+                          margin: 0
+                        }}>
+                          Parlay ({betGroup.length} picks)
+                        </h2>
+                        {firstBet.parlayMultiplier && (
+                          <span style={{
+                            padding: '0.5rem 1rem',
+                            backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                            color: '#3B82F6',
+                            borderRadius: '8px',
+                            fontSize: '0.875rem',
+                            fontWeight: 600
+                          }}>
+                            {firstBet.parlayMultiplier}x Multiplier
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  
                   <div style={{ 
                     display: 'flex', 
                     justifyContent: 'space-between', 
                     alignItems: 'flex-start', 
                     marginBottom: '1rem' 
                   }}>
-                    <div>
-                      <h3 style={{ 
-                        fontSize: '1.125rem', 
-                        fontWeight: 600, 
-                        color: 'white',
-                        marginBottom: '0.5rem'
-                      }}>
-                        {bet.market.participants.join(' vs ')}
-                      </h3>
-                      <p style={{ fontSize: '0.875rem', color: '#cccccc', marginBottom: '0.25rem' }}>
-                        {bet.market.sport} • {bet.market.marketType}
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontSize: '0.875rem', color: '#888888', marginBottom: '0.5rem' }}>
+                        {isParlay ? 'Picks:' : 'Selection:'}
                       </p>
-                      <p style={{ fontSize: '0.875rem', color: '#888888' }}>
-                        Placed: {formatDate(bet.placedAt)}
+                      {betGroup.map((bet, idx) => (
+                        <div key={bet.id} style={{ marginBottom: idx < betGroup.length - 1 ? '0.75rem' : '0' }}>
+                          <p style={{ 
+                            fontSize: '1rem', 
+                            fontWeight: 600, 
+                            color: 'white',
+                            marginBottom: '0.25rem'
+                          }}>
+                            {bet.selection} • {bet.market.sport}
+                          </p>
+                          <p style={{ fontSize: '0.875rem', color: '#cccccc' }}>
+                            {bet.market.participants.join(' vs ')}
+                          </p>
+                        </div>
+                      ))}
+                      <p style={{ fontSize: '0.875rem', color: '#888888', marginTop: '0.75rem' }}>
+                        Placed: {formatDate(firstBet.placedAt)}
                       </p>
                     </div>
-                    <div style={{ textAlign: 'right' }}>
+                    <div style={{ textAlign: 'right', marginLeft: '1rem' }}>
                       <span style={{
                         display: 'inline-block',
                         padding: '0.5rem 1rem',
@@ -453,11 +536,11 @@ export default function BetsPage() {
                         ...statusStyle,
                         border: `1px solid ${statusStyle.borderColor}`
                       }}>
-                        {bet.status}
+                        {firstBet.status}
                       </span>
-                      {bet.settledAt && (
+                      {firstBet.settledAt && (
                         <p style={{ fontSize: '0.875rem', color: '#888888', marginTop: '0.5rem' }}>
-                          Settled: {formatDate(bet.settledAt)}
+                          Settled: {formatDate(firstBet.settledAt)}
                         </p>
                       )}
                     </div>
@@ -466,31 +549,26 @@ export default function BetsPage() {
                   <div style={{ 
                     display: 'grid', 
                     gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', 
-                    gap: '1rem', 
-                    marginBottom: '1rem' 
+                    gap: '1rem'
                   }}>
                     <div>
-                      <p style={{ fontSize: '0.875rem', color: '#888888', marginBottom: '0.25rem' }}>Selection</p>
-                      <p style={{ fontWeight: 600, color: 'white' }}>{bet.selection}</p>
-                    </div>
-                    <div>
                       <p style={{ fontSize: '0.875rem', color: '#888888', marginBottom: '0.25rem' }}>Stake</p>
-                      <p style={{ fontWeight: 600, color: 'white' }}>${bet.stake.toFixed(2)}</p>
+                      <p style={{ fontWeight: 600, color: 'white' }}>${totalStake.toFixed(2)}</p>
                     </div>
                     <div>
                       <p style={{ fontSize: '0.875rem', color: '#888888', marginBottom: '0.25rem' }}>Potential Payout</p>
-                      <p style={{ fontWeight: 600, color: 'white' }}>${bet.potentialPayout.toFixed(2)}</p>
+                      <p style={{ fontWeight: 600, color: 'white' }}>${totalPayout.toFixed(2)}</p>
                     </div>
                     <div>
                       <p style={{ fontSize: '0.875rem', color: '#888888', marginBottom: '0.25rem' }}>P&L</p>
                       <p style={{ 
                         fontWeight: 600, 
-                        color: bet.pnl !== undefined 
-                          ? (bet.pnl >= 0 ? '#22C55E' : '#EF4444') 
+                        color: groupPnl !== undefined 
+                          ? (groupPnl >= 0 ? '#22C55E' : '#EF4444') 
                           : '#888888' 
                       }}>
-                        {bet.pnl !== undefined 
-                          ? (bet.pnl >= 0 ? '+' : '') + '$' + bet.pnl.toFixed(2) 
+                        {groupPnl !== undefined 
+                          ? (groupPnl >= 0 ? '+' : '') + '$' + groupPnl.toFixed(2) 
                           : 'N/A'}
                       </p>
                     </div>

@@ -350,32 +350,35 @@ export default function Home() {
     setPlacingBet(true)
 
     try {
-      // Place bets for each pick
-      const betPromises = activePicks.map(async (pick) => {
-        const response = await fetch('/api/bets', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-          body: JSON.stringify({
-            challengeAccountId,
+      // Generate parlay ID for grouping
+      const parlayId = `parlay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      
+      // Place parlay bet (all picks together as one parlay)
+      const response = await fetch('/api/bets/parlay', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          challengeAccountId,
+          parlayId,
+          picks: activePicks.map(pick => ({
             marketId: pick.marketId,
             selection: pick.choice, // "over" or "under"
-            stake: betAmount / picksCount // Divide bet amount equally among picks
-          })
+          })),
+          stake: betAmount, // Full bet amount for the parlay
+          multiplier: multiplier || 1
         })
-
-        if (!response.ok) {
-          const error = await response.json()
-          throw new Error(error.error || 'Failed to place bet')
-        }
-
-        return response.json()
       })
 
-      const results = await Promise.all(betPromises)
-      console.log('Bets placed successfully:', results)
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to place parlay')
+      }
+
+      const result = await response.json()
+      console.log('Parlay placed successfully:', result)
 
       // Clear selections and bet slip
       setSelectedPicks({})
@@ -384,11 +387,11 @@ export default function Home() {
       setIsBetSlipOpen(false)
 
       // Show success message and redirect to bets page
-      alert(`Successfully placed ${results.length} bet(s)!`)
+      alert(`Successfully placed parlay with ${activePicks.length} pick(s)!`)
       router.push('/dashboard/bets')
     } catch (error: any) {
-      console.error('Error placing bets:', error)
-      alert(`Failed to place bets: ${error.message}`)
+      console.error('Error placing parlay:', error)
+      alert(`Failed to place parlay: ${error.message}`)
     } finally {
       setPlacingBet(false)
     }

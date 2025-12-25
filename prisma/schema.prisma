@@ -51,13 +51,13 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  accounts      Account[]
-  sessions      Session[]
-  subscriptions Subscription[]
+  accounts          Account[]
+  sessions          Session[]
+  subscriptions     Subscription[]
   challengeAccounts ChallengeAccount[]
-  transactions  Transaction[]
-  auditLogs     AuditLog[]
-  payoutRequests PayoutRequest[]
+  transactions      Transaction[]
+  auditLogs         AuditLog[]
+  payoutRequests    PayoutRequest[]
 
   @@map("users")
 }
@@ -71,15 +71,15 @@ model VerificationToken {
 }
 
 model Subscription {
-  id                String            @id @default(cuid())
-  userId            String
-  stripeCustomerId  String            @unique
-  stripeSubscriptionId String?        @unique
-  status            SubscriptionStatus @default(ACTIVE)
-  plan              SubscriptionPlan  @default(STARTER)
-  renewAt           DateTime?
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
+  id                   String             @id @default(cuid())
+  userId               String
+  stripeCustomerId     String             @unique
+  stripeSubscriptionId String?            @unique
+  status               SubscriptionStatus @default(ACTIVE)
+  plan                 SubscriptionPlan   @default(STARTER)
+  renewAt              DateTime?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -87,19 +87,19 @@ model Subscription {
 }
 
 model Ruleset {
-  id                String   @id @default(cuid())
-  name              String
-  plan              SubscriptionPlan @unique
-  profitTargetPct   Float
-  maxDailyLossPct   Float
-  maxDrawdownPct    Float
-  maxStakePct       Float
-  allowedMarkets    String[] // JSON array of allowed market types
-  maxOdds           Float?   // Maximum odds allowed (e.g., 500 for +500)
-  consistencyRule   Boolean  @default(false) // Any single day ≤ 40% of total challenge profit
-  consistencyPct    Float?   // 40% by default
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id              String           @id @default(cuid())
+  name            String
+  plan            SubscriptionPlan @unique
+  profitTargetPct Float
+  maxDailyLossPct Float
+  maxDrawdownPct  Float
+  maxStakePct     Float
+  allowedMarkets  String[] // JSON array of allowed market types
+  maxOdds         Float? // Maximum odds allowed (e.g., 500 for +500)
+  consistencyRule Boolean          @default(false) // Any single day ≤ 40% of total challenge profit
+  consistencyPct  Float? // 40% by default
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   challengeAccounts ChallengeAccount[]
 
@@ -107,36 +107,36 @@ model Ruleset {
 }
 
 model ChallengeAccount {
-  id            String              @id @default(cuid())
+  id            String         @id @default(cuid())
   userId        String
   rulesetId     String
   startBalance  Float
   equity        Float
   highWaterMark Float
-  state         ChallengeState      @default(ACTIVE)
-  startedAt     DateTime            @default(now())
+  state         ChallengeState @default(ACTIVE)
+  startedAt     DateTime       @default(now())
   completedAt   DateTime?
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  ruleset Ruleset  @relation(fields: [rulesetId], references: [id])
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ruleset Ruleset @relation(fields: [rulesetId], references: [id])
   bets    Bet[]
 
   @@map("challenge_accounts")
 }
 
 model Market {
-  id          String      @id @default(cuid())
-  sport       String
-  league      String
-  eventId     String
-  marketType  MarketType
-  participants String[]   // JSON array of team/player names
-  status      MarketStatus @default(UPCOMING)
-  startTime   DateTime
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id           String       @id @default(cuid())
+  sport        String
+  league       String
+  eventId      String
+  marketType   MarketType
+  participants String[] // JSON array of team/player names
+  status       MarketStatus @default(UPCOMING)
+  startTime    DateTime
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 
   oddsSnapshots OddsSnapshot[]
   bets          Bet[]
@@ -148,7 +148,7 @@ model OddsSnapshot {
   id        String   @id @default(cuid())
   marketId  String
   bookmaker String
-  lineJSON  Json     // Store odds data as JSON
+  lineJSON  Json // Store odds data as JSON
   ts        DateTime @default(now())
 
   market Market @relation(fields: [marketId], references: [id], onDelete: Cascade)
@@ -158,31 +158,34 @@ model OddsSnapshot {
 }
 
 model Bet {
-  id              String    @id @default(cuid())
+  id                 String    @id @default(cuid())
   challengeAccountId String
-  marketId        String
-  oddsSnapshotId  String
-  selection       String    // Which side/outcome selected
-  stake           Float
-  potentialPayout Float
-  status          BetStatus @default(OPEN)
-  placedAt        DateTime  @default(now())
-  settledAt       DateTime?
+  marketId           String
+  oddsSnapshotId     String
+  selection          String // Which side/outcome selected
+  stake              Float
+  potentialPayout    Float
+  status             BetStatus @default(OPEN)
+  placedAt           DateTime  @default(now())
+  settledAt          DateTime?
+  parlayId           String? // ID to group bets in a parlay
+  parlayMultiplier   Float? // Multiplier for the parlay
 
   challengeAccount ChallengeAccount @relation(fields: [challengeAccountId], references: [id], onDelete: Cascade)
   market           Market           @relation(fields: [marketId], references: [id])
   oddsSnapshot     OddsSnapshot     @relation(fields: [oddsSnapshotId], references: [id])
   settlements      Settlement[]
 
+  @@index([parlayId])
   @@map("bets")
 }
 
 model Settlement {
-  id        String   @id @default(cuid())
-  betId     String
-  resultJSON Json    // Store settlement result as JSON
-  source    String   // "manual" or "api"
-  ts        DateTime @default(now())
+  id         String   @id @default(cuid())
+  betId      String
+  resultJSON Json // Store settlement result as JSON
+  source     String // "manual" or "api"
+  ts         DateTime @default(now())
 
   bet Bet @relation(fields: [betId], references: [id], onDelete: Cascade)
 
@@ -195,7 +198,7 @@ model Transaction {
   type      TransactionType
   amount    Float
   currency  String          @default("USD")
-  reference String?         // Stripe payment intent ID, etc.
+  reference String? // Stripe payment intent ID, etc.
   createdAt DateTime        @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -204,13 +207,13 @@ model Transaction {
 }
 
 model PayoutRequest {
-  id        String            @id @default(cuid())
-  userId    String
-  amount    Float
-  status    PayoutRequestStatus @default(PENDING)
+  id         String              @id @default(cuid())
+  userId     String
+  amount     Float
+  status     PayoutRequestStatus @default(PENDING)
   reviewedBy String?
-  createdAt DateTime          @default(now())
-  updatedAt DateTime          @updatedAt
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -221,7 +224,7 @@ model AuditLog {
   id        String   @id @default(cuid())
   userId    String?
   action    String
-  payload   Json     // Store action payload as JSON
+  payload   Json // Store action payload as JSON
   ip        String?
   createdAt DateTime @default(now())
 
@@ -231,7 +234,7 @@ model AuditLog {
 }
 
 model FeatureFlag {
-  key   String @id
+  key   String   @id
   value String
   ts    DateTime @default(now())
 
