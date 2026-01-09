@@ -6,6 +6,262 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Header from '@/components/Header'
 
+interface Bet {
+  id: string
+  market: {
+    id: string
+    sport: string
+    participants: string[]
+    marketType: string
+    startTime: string
+  }
+  selection: string
+  stake: number
+  potentialPayout: number
+  status: string
+  placedAt: string
+  settledAt?: string
+  pnl?: number
+  parlayId?: string | null
+  parlayMultiplier?: number | null
+}
+
+function BettingHistorySection({ challengeAccountId }: { challengeAccountId: string }) {
+  const [bets, setBets] = useState<Bet[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchBets()
+  }, [challengeAccountId])
+
+  const fetchBets = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch(`/api/bets?challengeAccountId=${challengeAccountId}`, {
+        credentials: 'include'
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        const mappedBets: Bet[] = (data.bets || []).map((bet: any) => ({
+          id: bet.id,
+          market: {
+            id: bet.market.id,
+            sport: bet.market.sport,
+            participants: bet.market.participants || [],
+            marketType: bet.market.marketType,
+            startTime: bet.market.startTime
+          },
+          selection: bet.selection,
+          stake: bet.stake,
+          potentialPayout: bet.potentialPayout,
+          status: bet.status,
+          placedAt: bet.placedAt,
+          settledAt: bet.settledAt || undefined,
+          pnl: bet.settlements?.[0]?.resultJSON?.pnl || undefined,
+          parlayId: bet.parlayId || undefined,
+          parlayMultiplier: bet.parlayMultiplier || undefined
+        }))
+        setBets(mappedBets)
+      }
+    } catch (error) {
+      console.error('Error fetching bets:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Group bets by parlayId
+  const groupedBets = bets.reduce((groups: Record<string, Bet[]>, bet) => {
+    if (bet.parlayId) {
+      if (!groups[bet.parlayId]) {
+        groups[bet.parlayId] = []
+      }
+      groups[bet.parlayId].push(bet)
+    } else {
+      groups[bet.id] = [bet]
+    }
+    return groups
+  }, {})
+
+  const betGroups = Object.values(groupedBets).slice(0, 10) // Show last 10 bets/groups
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMs / 3600000)
+    const diffDays = Math.floor(diffMs / 86400000)
+
+    if (diffMins < 1) return 'Just now'
+    if (diffMins < 60) return `${diffMins}m ago`
+    if (diffHours < 24) return `${diffHours}h ago`
+    if (diffDays < 7) return `${diffDays}d ago`
+    
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'WON':
+        return '#22C55E'
+      case 'LOST':
+        return '#EF4444'
+      case 'PUSH':
+        return '#9CA3AF'
+      case 'OPEN':
+        return '#EAB308'
+      default:
+        return '#9CA3AF'
+    }
+  }
+
+  return (
+    <div style={{
+      backgroundColor: '#1E1E1E',
+      border: '1px solid #FFFFFF',
+      borderRadius: '16px',
+      padding: '1.5rem'
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+        <h3 style={{ 
+          fontSize: '1.125rem', 
+          fontWeight: 600, 
+          color: 'white', 
+          margin: 0
+        }}>
+          Betting History
+        </h3>
+        <Link
+          href="/dashboard/bets"
+          style={{
+            fontSize: '0.875rem',
+            color: '#3B82F6',
+            textDecoration: 'none',
+            fontWeight: 500
+          }}
+        >
+          View All
+        </Link>
+      </div>
+      
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '2rem', color: '#888888' }}>
+          Loading bets...
+        </div>
+      ) : betGroups.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '2rem', color: '#888888' }}>
+          No bets yet. Start placing bets to see your history here.
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          {betGroups.map((betGroup) => {
+            const firstBet = betGroup[0]
+            const isParlay = betGroup.length > 1 && firstBet.parlayId
+            const statusColor = getStatusColor(firstBet.status)
+            
+            return (
+              <div
+                key={isParlay ? firstBet.parlayId : firstBet.id}
+                style={{
+                  backgroundColor: '#121212',
+                  borderRadius: '12px',
+                  padding: '1rem',
+                  border: `1px solid ${statusColor}33`,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start'
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  {isParlay && (
+                    <div style={{ 
+                      fontSize: '0.75rem', 
+                      color: '#888888', 
+                      marginBottom: '0.5rem',
+                      fontWeight: 600,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px'
+                    }}>
+                      Parlay • {betGroup.length} picks
+                      {firstBet.parlayMultiplier && ` • ${firstBet.parlayMultiplier}x`}
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    {betGroup.map((bet, idx) => (
+                      <div key={bet.id} style={{ marginBottom: idx < betGroup.length - 1 ? '0.5rem' : '0' }}>
+                        <div style={{ 
+                          fontSize: '0.875rem', 
+                          fontWeight: 600, 
+                          color: 'white',
+                          lineHeight: '1.3'
+                        }}>
+                          {bet.selection.charAt(0).toUpperCase() + bet.selection.slice(1)} • {bet.market.sport}
+                        </div>
+                        <div style={{ 
+                          fontSize: '0.75rem', 
+                          color: '#888888',
+                          marginTop: '0.125rem'
+                        }}>
+                          {bet.market.participants.slice(0, 2).join(' vs ')}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ 
+                    fontSize: '0.75rem', 
+                    color: '#888888', 
+                    marginTop: '0.5rem' 
+                  }}>
+                    {formatDate(firstBet.placedAt)}
+                  </div>
+                </div>
+                
+                <div style={{ textAlign: 'right', marginLeft: '1rem' }}>
+                  <div style={{ 
+                    fontSize: '0.875rem', 
+                    fontWeight: 600, 
+                    color: statusColor,
+                    marginBottom: '0.25rem'
+                  }}>
+                    {firstBet.status}
+                  </div>
+                  <div style={{ 
+                    fontSize: '0.875rem', 
+                    color: '#cccccc',
+                    marginBottom: '0.125rem'
+                  }}>
+                    ${firstBet.stake.toFixed(2)}
+                  </div>
+                  {firstBet.pnl !== undefined && (
+                    <div style={{ 
+                      fontSize: '0.875rem', 
+                      fontWeight: 600,
+                      color: firstBet.pnl >= 0 ? '#22C55E' : '#EF4444'
+                    }}>
+                      {firstBet.pnl >= 0 ? '+' : ''}${firstBet.pnl.toFixed(2)}
+                    </div>
+                  )}
+                  {firstBet.status === 'OPEN' && (
+                    <div style={{ 
+                      fontSize: '0.75rem', 
+                      color: '#888888',
+                      marginTop: '0.125rem'
+                    }}>
+                      ${firstBet.potentialPayout.toFixed(2)} potential
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 interface ChallengeAccount {
   id: string
   startBalance: number
@@ -256,14 +512,14 @@ export default function Dashboard() {
               marginBottom: '0.5rem',
               textTransform: 'uppercase',
               letterSpacing: '0.5px'
-            }}>Current Balance</h3>
+            }}>Starting Score</h3>
             <p style={{ 
               fontSize: '2rem', 
               fontWeight: 700, 
               color: 'white',
               margin: 0
             }}>
-              ${challengeAccount.equity.toLocaleString()}
+              ${challengeAccount.startBalance.toLocaleString()}
             </p>
           </div>
           
@@ -427,12 +683,12 @@ export default function Dashboard() {
               color: 'white', 
               marginBottom: '1rem' 
             }}>
-              Challenge Rules
+              Run Rules
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ color: '#cccccc' }}>Profit Target:</span>
-                <span style={{ fontWeight: 600, color: 'white' }}>{challengeAccount.ruleset.profitTargetPct}%</span>
+                <span style={{ color: '#cccccc' }}>Goal:</span>
+                <span style={{ fontWeight: 600, color: 'white' }}>${profitTarget.toLocaleString()}/{challengeAccount.ruleset.profitTargetPct}%</span>
               </div>
               <div style={{ 
                 width: '100%', 
@@ -451,8 +707,8 @@ export default function Dashboard() {
                 margin: '0.25rem 0'
               }}></div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ color: '#cccccc' }}>Max Drawdown:</span>
-                <span style={{ fontWeight: 600, color: 'white' }}>{challengeAccount.ruleset.maxDrawdownPct}%</span>
+                <span style={{ color: '#cccccc' }}>Allowed Dip:</span>
+                <span style={{ fontWeight: 600, color: 'white' }}>${(challengeAccount.startBalance * (1 - challengeAccount.ruleset.maxDrawdownPct / 100)).toLocaleString()}/{challengeAccount.ruleset.maxDrawdownPct}%</span>
               </div>
               <div style={{ 
                 width: '100%', 
@@ -468,69 +724,8 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <div style={{
-          backgroundColor: '#1E1E1E',
-          border: '1px solid #FFFFFF',
-          borderRadius: '16px',
-          padding: '1.5rem'
-        }}>
-          <h3 style={{ 
-            fontSize: '1.125rem', 
-            fontWeight: 600, 
-            color: 'white', 
-            marginBottom: '1rem' 
-          }}>
-            Quick Actions
-          </h3>
-          <div style={{ 
-            display: 'flex', 
-            flexWrap: 'wrap', 
-            gap: '1rem' 
-          }}>
-            <Link
-              href="/"
-              style={{
-                display: 'inline-block',
-                padding: '0.75rem 1.5rem',
-                backgroundColor: 'white',
-                color: '#121212',
-                borderRadius: '8px',
-                fontWeight: 600,
-                textDecoration: 'none',
-                transition: 'background-color 0.2s ease',
-                border: 'none',
-                cursor: 'pointer'
-              }}
-              className="hero-cta-button"
-            >
-              Browse Markets
-            </Link>
-            <Link
-              href="/dashboard/bets"
-              style={{
-                display: 'inline-block',
-                padding: '0.75rem 1.5rem',
-                backgroundColor: 'transparent',
-                color: 'white',
-                borderRadius: '8px',
-                fontWeight: 600,
-                textDecoration: 'none',
-                transition: 'all 0.2s ease',
-                border: '1px solid white',
-                cursor: 'pointer'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent'
-              }}
-            >
-              View My Bets
-            </Link>
-          </div>
-        </div>
+        {/* Betting History */}
+        <BettingHistorySection challengeAccountId={challengeAccount.id} />
       </main>
     </div>
   )

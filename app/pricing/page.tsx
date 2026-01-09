@@ -249,7 +249,7 @@ export default function Pricing() {
                 color: 'white', 
                 marginBottom: '0.75rem' 
               }}>
-                What happens after I complete a challenge?
+                What happens after I complete a run?
               </h3>
               <p style={{ color: '#cccccc', lineHeight: '1.6' }}>
                 Upon successful completion of your evaluation, you'll be eligible for our 
