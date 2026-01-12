@@ -7,12 +7,6 @@ export default withAuth(
   {
     callbacks: {
       authorized: ({ token, req }) => {
-        // Allow POST to /api/users (signup) without authentication
-        if (req.nextUrl.pathname === '/api/users' && req.method === 'POST') {
-          console.log('✅ Middleware: Allowing POST to /api/users (signup)')
-          return true
-        }
-
         // Check if user is authenticated
         if (!token) {
           console.log('❌ Middleware: No token found')
@@ -51,7 +45,7 @@ export const config = {
     '/dashboard/:path*',
     '/markets/:path*',
     '/admin/:path*',
-    '/api/bets/:path*',
-    '/api/users/:path*'
+    '/api/bets/:path*'
+    // Note: /api/users is not in the matcher - POST (signup) is public, GET requires auth (handled in route)
   ]
 }
