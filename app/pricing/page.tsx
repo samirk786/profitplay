@@ -1,6 +1,9 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import Header from '@/components/Header'
 
 const plans = [
@@ -52,6 +55,48 @@ const plans = [
 ]
 
 export default function Pricing() {
+  const { data: session } = useSession()
+  const router = useRouter()
+  const [loading, setLoading] = useState<string | null>(null)
+
+  const handlePlanSelection = async (planName: string) => {
+    if (!session) {
+      // Not logged in - redirect to signup
+      router.push(`/auth/signup?plan=${planName.toLowerCase()}`)
+      return
+    }
+
+    // Logged in - create subscription
+    setLoading(planName)
+    try {
+      const response = await fetch('/api/subscriptions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          plan: planName.toUpperCase(),
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        alert(data.error || 'Failed to create subscription. Please try again.')
+        setLoading(null)
+        return
+      }
+
+      // Success - redirect to dashboard
+      router.push('/dashboard')
+    } catch (error) {
+      console.error('Error creating subscription:', error)
+      alert('An error occurred. Please try again.')
+      setLoading(null)
+    }
+  }
+
   return (
     <div className="App">
       <Header />
@@ -186,12 +231,27 @@ export default function Pricing() {
                 ))}
               </ul>
 
-              <Link
-                href={`/auth/signup?plan=${plan.name.toLowerCase()}`}
-                className={`pricing-link-button ${plan.popular ? 'pricing-link-button-popular' : 'pricing-link-button-secondary'}`}
-              >
-                Get Started
-              </Link>
+              {session ? (
+                <button
+                  onClick={() => handlePlanSelection(plan.name)}
+                  disabled={loading === plan.name}
+                  className={`pricing-link-button ${plan.popular ? 'pricing-link-button-popular' : 'pricing-link-button-secondary'}`}
+                  style={{
+                    width: '100%',
+                    cursor: loading === plan.name ? 'not-allowed' : 'pointer',
+                    opacity: loading === plan.name ? 0.6 : 1
+                  }}
+                >
+                  {loading === plan.name ? 'Processing...' : 'Get Started'}
+                </button>
+              ) : (
+                <Link
+                  href={`/auth/signup?plan=${plan.name.toLowerCase()}`}
+                  className={`pricing-link-button ${plan.popular ? 'pricing-link-button-popular' : 'pricing-link-button-secondary'}`}
+                >
+                  Get Started
+                </Link>
+              )}
             </div>
           ))}
         </div>
