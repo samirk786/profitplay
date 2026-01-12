@@ -51,10 +51,12 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json({ user }, { status: 201 })
-  } catch (error) {
+  } catch (error: any) {
     console.error('User creation error:', error)
+    // Return more specific error messages for debugging
+    const errorMessage = error?.message || 'Internal server error'
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: errorMessage, details: error?.code || 'UNKNOWN_ERROR' },
       { status: 500 }
     )
   }

@@ -79,6 +79,7 @@ export default function SignUp() {
       const data = await response.json()
 
       if (!response.ok) {
+        console.error('Signup API error:', data)
         setErrors({ general: data.error || 'Failed to create account. Please try again.' })
         setIsLoading(false)
         return
@@ -99,9 +100,10 @@ export default function SignUp() {
         // Redirect to dashboard
         router.push('/dashboard')
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Signup error:', error)
-      setErrors({ general: 'An error occurred. Please try again.' })
+      const errorMessage = error?.message || 'An error occurred. Please try again.'
+      setErrors({ general: errorMessage })
       setIsLoading(false)
     }
   }
