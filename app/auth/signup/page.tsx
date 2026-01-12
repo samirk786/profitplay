@@ -76,7 +76,29 @@ export default function SignUp() {
         }),
       })
 
-      const data = await response.json()
+      // Check if response is JSON before parsing
+      const contentType = response.headers.get('content-type')
+      let data: any = {}
+      
+      if (contentType && contentType.includes('application/json')) {
+        try {
+          data = await response.json()
+        } catch (jsonError) {
+          console.error('Failed to parse JSON response:', jsonError)
+          const text = await response.text()
+          console.error('Response text:', text)
+          setErrors({ general: 'Server returned invalid response. Please try again.' })
+          setIsLoading(false)
+          return
+        }
+      } else {
+        // Response is not JSON (might be HTML error page)
+        const text = await response.text()
+        console.error('Non-JSON response:', text)
+        setErrors({ general: `Server error (${response.status}): ${response.statusText}` })
+        setIsLoading(false)
+        return
+      }
 
       if (!response.ok) {
         console.error('Signup API error:', data)
