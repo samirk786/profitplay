@@ -30,14 +30,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get STANDARD ruleset
-    const standardRuleset = await prisma.ruleset.findUnique({
-      where: { plan: SubscriptionPlan.STANDARD }
+    // Get PRO ruleset
+    const proRuleset = await prisma.ruleset.findUnique({
+      where: { plan: SubscriptionPlan.PRO }
     })
 
-    if (!standardRuleset) {
+    if (!proRuleset) {
       return NextResponse.json(
-        { error: 'STANDARD ruleset not found' },
+        { error: 'PRO ruleset not found' },
         { status: 404 }
       )
     }
@@ -54,8 +54,17 @@ export async function POST(request: NextRequest) {
           userId: adminUser.id,
           stripeCustomerId: `admin_${adminUser.id}`,
           status: 'ACTIVE',
-          plan: SubscriptionPlan.STANDARD,
+          plan: SubscriptionPlan.PRO,
           renewAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+        },
+      })
+    } else {
+      // Update existing subscription to PRO
+      adminSubscription = await prisma.subscription.update({
+        where: { id: adminSubscription.id },
+        data: {
+          plan: SubscriptionPlan.PRO,
+          status: 'ACTIVE',
         },
       })
     }
@@ -70,7 +79,7 @@ export async function POST(request: NextRequest) {
       adminChallenge = await prisma.challengeAccount.create({
         data: {
           userId: adminUser.id,
-          rulesetId: standardRuleset.id,
+          rulesetId: proRuleset.id,
           startBalance: 10000,
           equity: 10750, // Some profit to show progress
           highWaterMark: 10750,
@@ -81,10 +90,11 @@ export async function POST(request: NextRequest) {
         }
       })
     } else {
-      // Update existing challenge account with mock progress
+      // Update existing challenge account with PRO ruleset and mock progress
       adminChallenge = await prisma.challengeAccount.update({
         where: { id: adminChallenge.id },
         data: {
+          rulesetId: proRuleset.id,
           equity: 10750,
           highWaterMark: 10750,
         },
