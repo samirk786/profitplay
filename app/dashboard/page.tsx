@@ -485,7 +485,7 @@ export default function Dashboard() {
             color: 'white', 
             marginBottom: '0.5rem' 
           }}>
-            Welcome to your Challenge
+            Welcome to your Run
           </h1>
           <p style={{ color: '#cccccc', fontSize: '1.125rem' }}>
             Track your progress and manage your simulated performance.
@@ -717,8 +717,8 @@ export default function Dashboard() {
                 margin: '0.25rem 0'
               }}></div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ color: '#cccccc' }}>Max Stake per Bet:</span>
-                <span style={{ fontWeight: 600, color: 'white' }}>{challengeAccount.ruleset.maxStakePct}%</span>
+                <span style={{ color: '#cccccc' }}>Max Bet Size:</span>
+                <span style={{ fontWeight: 600, color: 'white' }}>$30</span>
               </div>
             </div>
           </div>
