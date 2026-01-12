@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
@@ -9,6 +10,34 @@ export default function Header() {
   const pathname = usePathname()
   const { data: session, status } = useSession()
   const activeTab = pathname === '/dashboard' || pathname?.startsWith('/dashboard') ? 'Account' : 'Board'
+  const [plan, setPlan] = useState<string | null>(null)
+  const [startingScore, setStartingScore] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (session?.user?.id) {
+      fetchUserProfile()
+    }
+  }, [session])
+
+  const fetchUserProfile = async () => {
+    try {
+      const response = await fetch('/api/user/profile', {
+        credentials: 'include'
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setPlan(data.plan)
+        setStartingScore(data.startingScore)
+      }
+    } catch (error) {
+      console.error('Error fetching user profile:', error)
+    }
+  }
+
+  const formatPlan = (plan: string | null) => {
+    if (!plan) return 'None'
+    return plan.charAt(0).toUpperCase() + plan.slice(1).toLowerCase()
+  }
 
   const handleAccountClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (!session) {
@@ -47,7 +76,17 @@ export default function Header() {
         </div>
       </div>
       {session ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+            <span style={{ color: 'white', fontSize: '0.875rem' }}>
+              Current Plan: {formatPlan(plan)}
+            </span>
+            {startingScore !== null && (
+              <span style={{ color: 'white', fontSize: '0.875rem' }}>
+                Starting Score: ${startingScore.toLocaleString()}
+              </span>
+            )}
+          </div>
           <span style={{ color: 'white', fontSize: '0.875rem' }}>
             {session.user?.email}
           </span>

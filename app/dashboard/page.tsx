@@ -670,7 +670,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Challenge Rules */}
+          {/* Run Guidelines */}
           <div style={{
             backgroundColor: '#1E1E1E',
             border: '1px solid #FFFFFF',
@@ -681,10 +681,17 @@ export default function Dashboard() {
               fontSize: '1.125rem', 
               fontWeight: 600, 
               color: 'white', 
+              marginBottom: '0.5rem' 
+            }}>
+              Run Guidelines
+            </h3>
+            <p style={{ 
+              fontSize: '0.875rem', 
+              color: '#cccccc', 
               marginBottom: '1rem' 
             }}>
-              Run Rules
-            </h3>
+              These limits keep each run fair and skill-based
+            </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ color: '#cccccc' }}>Goal:</span>
