@@ -65,13 +65,18 @@ interface PlayerProp {
   category: string
   sport: string
   jerseyNumber: number | null
-    matchup: string
+  team?: string | null
+  matchup: string
   gameDateTime: string | null
 }
 
 // Helper function to generate composite key for prop selection
 const getPropKey = (sport: string, playerName: string, category: string) => {
   return `${sport}-${playerName}-${category}`
+}
+
+const getHeadshotKey = (sport: string, playerName: string, team?: string | null) => {
+  return `${sport}-${playerName}-${team || ''}`
 }
 
 export default function Home() {
@@ -99,6 +104,7 @@ export default function Home() {
   const [playerProps, setPlayerProps] = useState<PlayerProp[]>([])
   const [loadingProps, setLoadingProps] = useState(false)
   const [propsError, setPropsError] = useState<string | null>(null)
+  const [playerHeadshots, setPlayerHeadshots] = useState<Record<string, string>>({})
 
   // State for sport and category filters
   const [selectedSport, setSelectedSport] = useState("NBA")
@@ -200,6 +206,7 @@ export default function Home() {
                 category: selectedCategory,
                 sport: market.sport,
                 jerseyNumber: metadata.jersey ?? null,
+                team: metadata.team || market.participants?.[1] || null,
                 matchup: metadata.matchup || `${market.participants[0]} @ ${market.participants[1] || ''}`,
                 gameDateTime: gameDateTime
               }
@@ -233,6 +240,53 @@ export default function Home() {
     const matchesMatchup = selectedMatchups.length === 0 || selectedMatchups.includes(player.matchup)
     return matchesMatchup
   })
+
+  useEffect(() => {
+    const loadHeadshots = async () => {
+      const missing = visiblePlayers.filter((player) => {
+        const key = getHeadshotKey(player.sport, player.playerName, player.team)
+        return !playerHeadshots[key]
+      })
+      if (missing.length === 0) return
+
+      try {
+        const results = await Promise.all(
+          missing.map(async (player) => {
+            const params = new URLSearchParams({
+              sport: player.sport,
+              playerName: player.playerName
+            })
+            if (player.team) {
+              params.append('team', player.team)
+            }
+            const response = await fetch(`/api/headshots?${params.toString()}`)
+            if (!response.ok) return null
+            const data = await response.json()
+            if (!data?.url) return null
+            const key = getHeadshotKey(player.sport, player.playerName, player.team)
+            return { key, url: data.url as string }
+          })
+        )
+
+        const updates = results.filter(Boolean) as Array<{ key: string; url: string }>
+        if (updates.length > 0) {
+          setPlayerHeadshots((prev) => {
+            const next = { ...prev }
+            updates.forEach((item) => {
+              next[item.key] = item.url
+            })
+            return next
+          })
+        }
+      } catch (error) {
+        console.error('Failed to load headshots:', error)
+      }
+    }
+
+    if (visiblePlayers.length > 0) {
+      loadHeadshots()
+    }
+  }, [visiblePlayers, playerHeadshots])
 
   // Derive active picks with choice field and market ID
   const activePicks = playerProps
@@ -582,7 +636,16 @@ export default function Home() {
                 <div className="player-card-top">
                   <div className="player-name">{player.displayName}</div>
                   <div className="player-jersey-wrapper">
-                    <JerseyIcon number={player.jerseyNumber} />
+                    {playerHeadshots[getHeadshotKey(player.sport, player.playerName, player.team)] ? (
+                      <img
+                        src={playerHeadshots[getHeadshotKey(player.sport, player.playerName, player.team)]}
+                        alt={`${player.playerName} headshot`}
+                        className="player-headshot"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <JerseyIcon number={player.jerseyNumber} />
+                    )}
                   </div>
                 </div>
                 <div className="player-card-body">
