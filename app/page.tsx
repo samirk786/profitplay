@@ -93,6 +93,7 @@ export default function Home() {
   // State for challenge account ID
   const [challengeAccountId, setChallengeAccountId] = useState<string | null>(null)
   const [placingBet, setPlacingBet] = useState(false)
+  const [currentPlan, setCurrentPlan] = useState<string | null>(null)
 
   // State for player props from API
   const [playerProps, setPlayerProps] = useState<PlayerProp[]>([])
@@ -114,8 +115,25 @@ export default function Home() {
   useEffect(() => {
     if (session?.user?.id) {
       fetchChallengeAccount()
+      fetchUserProfile()
+    } else {
+      setCurrentPlan(null)
     }
   }, [session])
+
+  const fetchUserProfile = async () => {
+    try {
+      const response = await fetch('/api/user/profile', {
+        credentials: 'include'
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setCurrentPlan(data.plan || null)
+      }
+    } catch (error) {
+      console.error('Error fetching user profile:', error)
+    }
+  }
 
   const fetchChallengeAccount = async () => {
     try {
@@ -336,9 +354,21 @@ export default function Home() {
 
   // Handler for Play button click
   const handlePlay = async () => {
-    if (!challengeAccountId) {
-      alert('Please log in and ensure you have an active challenge account.')
+    if (!session) {
+      alert('Please log in to place a bet.')
       router.push('/auth/signin')
+      return
+    }
+
+    if (!currentPlan) {
+      alert('Please select a plan before placing a bet.')
+      router.push('/pricing')
+      return
+    }
+
+    if (!challengeAccountId) {
+      alert('Please ensure you have an active challenge account.')
+      router.push('/pricing')
       return
     }
 

@@ -9,7 +9,11 @@ import { useSession, signOut } from 'next-auth/react'
 export default function Header() {
   const pathname = usePathname()
   const { data: session, status } = useSession()
-  const activeTab = pathname === '/dashboard' || pathname?.startsWith('/dashboard') ? 'Account' : 'Board'
+  const activeTab = pathname === '/pricing'
+    ? 'Plans'
+    : pathname === '/dashboard' || pathname?.startsWith('/dashboard')
+      ? 'Account'
+      : 'Board'
   const [plan, setPlan] = useState<string | null>(null)
   const [startingScore, setStartingScore] = useState<number | null>(null)
 
@@ -65,6 +69,12 @@ export default function Header() {
             className={`nav-tab-btn ${activeTab === 'Board' ? 'nav-tab-btn-active' : ''}`}
           >
             Board
+          </Link>
+          <Link 
+            href="/pricing"
+            className={`nav-tab-btn ${activeTab === 'Plans' ? 'nav-tab-btn-active' : ''}`}
+          >
+            Plans
           </Link>
           <Link 
             href={session ? "/dashboard" : "/auth/signin"}

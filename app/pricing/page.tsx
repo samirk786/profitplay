@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
@@ -58,6 +58,35 @@ export default function Pricing() {
   const { data: session } = useSession()
   const router = useRouter()
   const [loading, setLoading] = useState<string | null>(null)
+  const [currentPlan, setCurrentPlan] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (session) {
+      fetchCurrentPlan()
+    } else {
+      setCurrentPlan(null)
+    }
+  }, [session])
+
+  const fetchCurrentPlan = async () => {
+    try {
+      const response = await fetch('/api/user/profile', {
+        credentials: 'include'
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setCurrentPlan(data.plan || null)
+      }
+    } catch (error) {
+      console.error('Error fetching current plan:', error)
+    }
+  }
+
+  const planRank: Record<string, number> = {
+    STARTER: 1,
+    STANDARD: 2,
+    PRO: 3
+  }
 
   const handlePlanSelection = async (planName: string) => {
     if (!session) {
@@ -133,7 +162,18 @@ export default function Pricing() {
           gap: '2rem',
           marginBottom: '5rem'
         }}>
-          {plans.map((plan) => (
+          {plans.map((plan) => {
+            const planKey = plan.name.toUpperCase()
+            const currentRank = currentPlan ? planRank[currentPlan] : null
+            const thisRank = planRank[planKey]
+            const isSelected = currentRank !== null && currentRank === thisRank
+            const isUpgrade = currentRank !== null && thisRank > currentRank
+            const isLower = currentRank !== null && thisRank < currentRank
+
+            const buttonLabel = isSelected ? 'Selected' : isUpgrade ? 'Upgrade' : 'Get Started'
+            const isDisabled = loading === plan.name || isSelected || isLower
+
+            return (
             <div
               key={plan.name}
               style={{
@@ -234,15 +274,17 @@ export default function Pricing() {
               {session ? (
                 <button
                   onClick={() => handlePlanSelection(plan.name)}
-                  disabled={loading === plan.name}
+                  disabled={isDisabled}
                   className={`pricing-link-button ${plan.popular ? 'pricing-link-button-popular' : 'pricing-link-button-secondary'}`}
                   style={{
                     width: '100%',
-                    cursor: loading === plan.name ? 'not-allowed' : 'pointer',
-                    opacity: loading === plan.name ? 0.6 : 1
+                    cursor: isDisabled ? 'not-allowed' : 'pointer',
+                    opacity: isDisabled ? 0.5 : 1,
+                    backgroundColor: isSelected ? '#2A2A2A' : undefined,
+                    color: isSelected ? '#888888' : undefined
                   }}
                 >
-                  {loading === plan.name ? 'Processing...' : 'Get Started'}
+                  {loading === plan.name ? 'Processing...' : buttonLabel}
                 </button>
               ) : (
                 <Link
@@ -253,7 +295,7 @@ export default function Pricing() {
                 </Link>
               )}
             </div>
-          ))}
+          )})}
         </div>
 
         {/* FAQ Section */}
