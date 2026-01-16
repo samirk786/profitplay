@@ -275,9 +275,9 @@ export default function BetsPage() {
           marginBottom: '1.5rem',
           flexWrap: 'wrap'
         }}>
-          <select
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
+              <select
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
             style={{
               padding: '0.5rem 1rem',
               backgroundColor: '#1E1E1E',
@@ -287,16 +287,16 @@ export default function BetsPage() {
               fontSize: '0.875rem',
               cursor: 'pointer'
             }}
-          >
-            <option value="ALL">All Statuses</option>
-            <option value="OPEN">Open</option>
-            <option value="WON">Won</option>
-            <option value="LOST">Lost</option>
-            <option value="PUSH">Push</option>
-          </select>
-          <select
-            value={sportFilter}
-            onChange={(e) => setSportFilter(e.target.value)}
+              >
+                <option value="ALL">All Statuses</option>
+                <option value="OPEN">Open</option>
+                <option value="WON">Won</option>
+                <option value="LOST">Lost</option>
+                <option value="PUSH">Push</option>
+              </select>
+              <select
+                value={sportFilter}
+                onChange={(e) => setSportFilter(e.target.value)}
             style={{
               padding: '0.5rem 1rem',
               backgroundColor: '#1E1E1E',
@@ -306,13 +306,13 @@ export default function BetsPage() {
               fontSize: '0.875rem',
               cursor: 'pointer'
             }}
-          >
-            <option value="ALL">All Sports</option>
-            <option value="NBA">NBA</option>
-            <option value="NFL">NFL</option>
-            <option value="MLB">MLB</option>
+              >
+                <option value="ALL">All Sports</option>
+                <option value="NBA">NBA</option>
+                <option value="NFL">NFL</option>
+                <option value="MLB">MLB</option>
             <option value="NHL">NHL</option>
-          </select>
+              </select>
         </div>
 
         {/* Betting History */}
@@ -354,7 +354,7 @@ export default function BetsPage() {
                     paddingBottom: '1rem',
                     borderBottom: '1px solid #333'
                   }}>
-                    <div>
+                  <div>
                       <div style={{
                         fontSize: '1.5rem',
                         fontWeight: 700,
@@ -370,15 +370,15 @@ export default function BetsPage() {
                           marginBottom: '0.25rem'
                         }}>
                           MAX {firstBet.parlayMultiplier.toFixed(2)}x
-                        </div>
+                  </div>
                       )}
                       <div style={{
                         fontSize: '0.875rem',
                         color: '#888888'
                       }}>
                         {betGroup.length} {betGroup.length === 1 ? 'PICK' : 'PICKS'}
-                      </div>
-                    </div>
+                  </div>
+                </div>
                     <div style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -431,16 +431,24 @@ export default function BetsPage() {
                         <div style={{
                           display: 'grid',
                           gridTemplateColumns: '2fr 1fr 1fr',
-                          gap: '1rem',
-                          alignItems: 'flex-start'
+                          gap: '1.5rem',
+                          alignItems: 'flex-start',
+                          position: 'relative',
+                          zIndex: 0
                         }}>
                           {/* Player Column */}
-                          <div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
-                              <div style={{ position: 'relative', width: '60px', height: '60px' }}>
+                          <div style={{ position: 'relative', overflow: 'hidden' }}>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', marginBottom: '0.5rem' }}>
+                              <div style={{ 
+                                position: 'relative', 
+                                width: '60px', 
+                                height: '60px', 
+                                flexShrink: 0,
+                                overflow: 'hidden'
+                              }}>
                                 <JerseyIcon number={playerInfo.jersey} />
                               </div>
-                              <div style={{ flex: 1 }}>
+                              <div style={{ flex: 1, minWidth: 0 }}>
                                 <div style={{
                                   fontSize: '1.125rem',
                                   fontWeight: 600,
@@ -482,7 +490,7 @@ export default function BetsPage() {
                               marginBottom: '0.25rem'
                             }}>
                               {playerInfo.matchup}
-                            </div>
+                  </div>
                             <div style={{
                               display: 'flex',
                               alignItems: 'center',
@@ -493,43 +501,55 @@ export default function BetsPage() {
                             }}>
                               <span>👁</span>
                               <span>{playerInfo.engagement}</span>
-                            </div>
-                          </div>
+                  </div>
+                </div>
 
                           {/* Actual Column */}
-                          <div>
+                          <div style={{ minWidth: '80px' }}>
                             {playerInfo.actualValue !== null ? (
                               <>
                                 <div style={{
-                                  height: '6px',
+                                  height: '8px',
                                   backgroundColor: '#333',
-                                  borderRadius: '3px',
-                                  marginBottom: '0.5rem',
+                                  borderRadius: '4px',
+                                  marginBottom: '0.75rem',
                                   position: 'relative',
-                                  overflow: 'hidden'
+                                  overflow: 'hidden',
+                                  width: '100%'
                                 }}>
                                   <div style={{
                                     height: '100%',
                                     width: `${Math.min((playerInfo.actualValue / maxValue) * 100, 100)}%`,
                                     backgroundColor: progressColor,
-                                    borderRadius: '3px'
+                                    borderRadius: '4px',
+                                    transition: 'width 0.3s ease'
                                   }}></div>
                                 </div>
                                 <div style={{
-                                  fontSize: '1rem',
-                                  fontWeight: 600,
-                                  color: progressColor
+                                  fontSize: '1.125rem',
+                                  fontWeight: 700,
+                                  color: progressColor,
+                                  lineHeight: '1.2'
                                 }}>
                                   {playerInfo.actualValue.toFixed(0)}
                                 </div>
                               </>
                             ) : (
-                              <div style={{
-                                fontSize: '0.875rem',
-                                color: '#666666'
-                              }}>
-                                Pending
-                              </div>
+                              <>
+                                <div style={{
+                                  height: '8px',
+                                  backgroundColor: '#333',
+                                  borderRadius: '4px',
+                                  marginBottom: '0.75rem',
+                                  width: '100%'
+                                }}></div>
+                                <div style={{
+                                  fontSize: '0.875rem',
+                                  color: '#666666'
+                                }}>
+                                  Pending
+                                </div>
+                              </>
                             )}
                           </div>
 
@@ -631,7 +651,7 @@ export default function BetsPage() {
                       <span>SHARE</span>
                     </button>
                   </div>
-                </div>
+              </div>
               )
             })
           )}

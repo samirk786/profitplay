@@ -168,7 +168,7 @@ function BettingHistorySection({ challengeAccountId }: { challengeAccountId: str
                   backgroundColor: '#121212',
                   borderRadius: '12px',
                   padding: '1rem',
-                  border: `1px solid ${statusColor}33`,
+                  border: `1px solid ${statusColor === '#EAB308' ? '#EAB30833' : statusColor === '#22C55E' ? '#22C55E33' : '#EF444433'}`,
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'flex-start'
@@ -184,18 +184,17 @@ function BettingHistorySection({ challengeAccountId }: { challengeAccountId: str
                       textTransform: 'uppercase',
                       letterSpacing: '0.5px'
                     }}>
-                      Parlay • {betGroup.length} picks
-                      {firstBet.parlayMultiplier && ` • ${firstBet.parlayMultiplier}x`}
+                      PARLAY • {betGroup.length} PICKS{firstBet.parlayMultiplier ? ` • ${firstBet.parlayMultiplier.toFixed(0)}X` : ''}
                     </div>
                   )}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.5rem' }}>
                     {betGroup.map((bet, idx) => (
-                      <div key={bet.id} style={{ marginBottom: idx < betGroup.length - 1 ? '0.5rem' : '0' }}>
+                      <div key={bet.id}>
                         <div style={{ 
                           fontSize: '0.875rem', 
                           fontWeight: 600, 
                           color: 'white',
-                          lineHeight: '1.3'
+                          lineHeight: '1.4'
                         }}>
                           {bet.selection.charAt(0).toUpperCase() + bet.selection.slice(1)} • {bet.market.sport}
                         </div>
@@ -204,21 +203,20 @@ function BettingHistorySection({ challengeAccountId }: { challengeAccountId: str
                           color: '#888888',
                           marginTop: '0.125rem'
                         }}>
-                          {bet.market.participants.slice(0, 2).join(' vs ')}
+                          {bet.market.participants.length > 0 ? bet.market.participants.slice(0, 2).join(' vs ') : 'N/A'}
                         </div>
                       </div>
                     ))}
                   </div>
                   <div style={{ 
                     fontSize: '0.75rem', 
-                    color: '#888888', 
-                    marginTop: '0.5rem' 
+                    color: '#888888'
                   }}>
                     {formatDate(firstBet.placedAt)}
                   </div>
                 </div>
                 
-                <div style={{ textAlign: 'right', marginLeft: '1rem' }}>
+                <div style={{ textAlign: 'right', marginLeft: '1rem', flexShrink: 0 }}>
                   <div style={{ 
                     fontSize: '0.875rem', 
                     fontWeight: 600, 
@@ -234,22 +232,22 @@ function BettingHistorySection({ challengeAccountId }: { challengeAccountId: str
                   }}>
                     ${firstBet.stake.toFixed(2)}
                   </div>
-                  {firstBet.pnl !== undefined && (
-                    <div style={{ 
-                      fontSize: '0.875rem', 
-                      fontWeight: 600,
-                      color: firstBet.pnl >= 0 ? '#22C55E' : '#EF4444'
-                    }}>
-                      {firstBet.pnl >= 0 ? '+' : ''}${firstBet.pnl.toFixed(2)}
-                    </div>
-                  )}
                   {firstBet.status === 'OPEN' && (
                     <div style={{ 
                       fontSize: '0.75rem', 
-                      color: '#888888',
-                      marginTop: '0.125rem'
+                      color: '#888888'
                     }}>
                       ${firstBet.potentialPayout.toFixed(2)} potential
+                    </div>
+                  )}
+                  {firstBet.pnl !== undefined && firstBet.status !== 'OPEN' && (
+                    <div style={{ 
+                      fontSize: '0.875rem', 
+                      fontWeight: 600,
+                      color: firstBet.pnl >= 0 ? '#22C55E' : '#EF4444',
+                      marginTop: '0.125rem'
+                    }}>
+                      {firstBet.pnl >= 0 ? '+' : ''}${firstBet.pnl.toFixed(2)}
                     </div>
                   )}
                 </div>
