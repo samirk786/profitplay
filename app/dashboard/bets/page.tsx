@@ -183,7 +183,7 @@ export default function BetsPage() {
         statType = 'CAR'
       } else if (bet.market.marketType === 'PROPS') {
         // Try to infer from metadata or use generic
-        statType = metadata.statType || 'PROPS'
+        statType = metadata.statType || metadata.propType || 'PROPS'
       } else {
         statType = bet.market.marketType.replace('PLAYER_', '').replace(/_/g, ' ')
       }

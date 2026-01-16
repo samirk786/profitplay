@@ -116,7 +116,7 @@ function BettingHistorySection({ challengeAccountId }: { challengeAccountId: str
     } else if (bet.market.marketType.includes('RUSH_ATT')) {
       statType = 'CAR'
     } else if (bet.market.marketType === 'PROPS') {
-      statType = 'PROPS'
+      statType = metadata.statType || metadata.propType || 'PROPS'
     } else {
       statType = bet.market.marketType.replace('PLAYER_', '').replace(/_/g, ' ')
     }
