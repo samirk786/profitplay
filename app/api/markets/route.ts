@@ -348,6 +348,7 @@ async function syncMockPlayerPropsToDatabase(mockMarkets: any[], sport: string, 
   ]
 
   try {
+    const propTypeLabel = getPropTypeLabel(marketType)
     for (const market of mockMarkets) {
       // Use a stable ID based on player name and market type (not timestamp)
       // This ensures we can find the market when placing bets
@@ -396,9 +397,27 @@ async function syncMockPlayerPropsToDatabase(mockMarkets: any[], sport: string, 
           data: {
             marketId: dbMarket.id,
             bookmaker: 'MOCK',
-            lineJSON: market.oddsSnapshots[0].lineJSON
+            lineJSON: {
+              ...(market.oddsSnapshots[0].lineJSON || {}),
+              propType: propTypeLabel,
+              originalMarketType: marketType
+            }
           }
         })
+      } else if (recentSnapshot) {
+        const lineJSON = recentSnapshot.lineJSON as any
+        if (!lineJSON?.propType || !lineJSON?.originalMarketType) {
+          await prisma.oddsSnapshot.update({
+            where: { id: recentSnapshot.id },
+            data: {
+              lineJSON: {
+                ...(lineJSON || {}),
+                propType: lineJSON?.propType || propTypeLabel,
+                originalMarketType: lineJSON?.originalMarketType || marketType
+              }
+            }
+          })
+        }
       }
 
       // Update the market ID in the returned data to use the stable ID
@@ -419,6 +438,8 @@ function getMockPlayerProps(sport: string, marketType: string): any[] {
   if (players.length === 0) {
     return []
   }
+
+  const propTypeLabel = getPropTypeLabel(marketType)
 
   const baseTime = new Date(Date.now() + 24 * 60 * 60 * 1000) // Tomorrow
 
@@ -451,10 +472,30 @@ function getMockPlayerProps(sport: string, marketType: string): any[] {
         team: p.team,
         jersey: p.jersey,
         matchup: p.matchup,
-        engagement: p.engagement
+        engagement: p.engagement,
+        propType: propTypeLabel
       }
     }
   })
+}
+
+function getPropTypeLabel(marketType: string): string {
+  if (!marketType) return 'PROPS'
+  if (marketType.includes('PLAYER_POINTS')) return 'PTS'
+  if (marketType.includes('PLAYER_REBOUNDS')) return 'REB'
+  if (marketType.includes('PLAYER_ASSISTS')) return 'AST'
+  if (marketType.includes('PLAYER_STEALS')) return 'STL'
+  if (marketType.includes('PLAYER_BLOCKS')) return 'BLK'
+  if (marketType.includes('PLAYER_THREES')) return '3PT'
+  if (marketType.includes('PLAYER_PASS_YDS')) return 'PASS YDS'
+  if (marketType.includes('PLAYER_PASS_TDS')) return 'PASS TDS'
+  if (marketType.includes('PLAYER_PASS_COMPLETIONS')) return 'CMP'
+  if (marketType.includes('PLAYER_RUSH_YDS')) return 'RUSH YDS'
+  if (marketType.includes('PLAYER_RUSH_ATT')) return 'CAR'
+  if (marketType.includes('PLAYER_REC_YDS')) return 'REC YDS'
+  if (marketType.includes('PLAYER_REC_RECEPTIONS')) return 'REC'
+  if (marketType.includes('PLAYER_REC_TDS')) return 'REC TDS'
+  return marketType.replace('PLAYER_', '').replace(/_/g, ' ')
 }
 
 // Comprehensive player props data with 20+ players per category

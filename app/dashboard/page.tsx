@@ -93,6 +93,25 @@ function BettingHistorySection({ challengeAccountId }: { challengeAccountId: str
   const betGroups = Object.values(groupedBets).slice(0, 10) // Show last 10 bets/groups
 
   // Extract player info and prop type from bet
+  const formatPropType = (marketType?: string) => {
+    if (!marketType) return null
+    if (marketType.includes('PLAYER_POINTS')) return 'PTS'
+    if (marketType.includes('PLAYER_REBOUNDS')) return 'REB'
+    if (marketType.includes('PLAYER_ASSISTS')) return 'AST'
+    if (marketType.includes('PLAYER_STEALS')) return 'STL'
+    if (marketType.includes('PLAYER_BLOCKS')) return 'BLK'
+    if (marketType.includes('PLAYER_THREES')) return '3PT'
+    if (marketType.includes('PLAYER_PASS_YDS')) return 'PASS YDS'
+    if (marketType.includes('PLAYER_PASS_TDS')) return 'PASS TDS'
+    if (marketType.includes('PLAYER_PASS_COMPLETIONS')) return 'CMP'
+    if (marketType.includes('PLAYER_RUSH_YDS')) return 'RUSH YDS'
+    if (marketType.includes('PLAYER_RUSH_ATT')) return 'CAR'
+    if (marketType.includes('PLAYER_REC_YDS')) return 'REC YDS'
+    if (marketType.includes('PLAYER_REC_RECEPTIONS')) return 'REC'
+    if (marketType.includes('PLAYER_REC_TDS')) return 'REC TDS'
+    return marketType.replace('PLAYER_', '').replace(/_/g, ' ')
+  }
+
   const getBetInfo = (bet: Bet) => {
     const metadata = bet.market._metadata || {}
     const lineJSON = bet.oddsSnapshot?.lineJSON || {}
@@ -116,7 +135,13 @@ function BettingHistorySection({ challengeAccountId }: { challengeAccountId: str
     } else if (bet.market.marketType.includes('RUSH_ATT')) {
       statType = 'CAR'
     } else if (bet.market.marketType === 'PROPS') {
-      statType = metadata.statType || metadata.propType || 'PROPS'
+      statType =
+        metadata.statType ||
+        metadata.propType ||
+        lineJSON.propType ||
+        formatPropType(metadata.originalMarketType) ||
+        formatPropType(lineJSON.originalMarketType) ||
+        'PROPS'
     } else {
       statType = bet.market.marketType.replace('PLAYER_', '').replace(/_/g, ' ')
     }

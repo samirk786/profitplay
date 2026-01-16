@@ -143,6 +143,25 @@ export default function BetsPage() {
     .sort((a, b) => new Date(b[0].placedAt).getTime() - new Date(a[0].placedAt).getTime())
 
   // Extract player info from market metadata
+  const formatPropType = (marketType?: string) => {
+    if (!marketType) return null
+    if (marketType.includes('PLAYER_POINTS')) return 'PTS'
+    if (marketType.includes('PLAYER_REBOUNDS')) return 'REB'
+    if (marketType.includes('PLAYER_ASSISTS')) return 'AST'
+    if (marketType.includes('PLAYER_STEALS')) return 'STL'
+    if (marketType.includes('PLAYER_BLOCKS')) return 'BLK'
+    if (marketType.includes('PLAYER_THREES')) return '3PT'
+    if (marketType.includes('PLAYER_PASS_YDS')) return 'PASS YDS'
+    if (marketType.includes('PLAYER_PASS_TDS')) return 'PASS TDS'
+    if (marketType.includes('PLAYER_PASS_COMPLETIONS')) return 'CMP'
+    if (marketType.includes('PLAYER_RUSH_YDS')) return 'RUSH YDS'
+    if (marketType.includes('PLAYER_RUSH_ATT')) return 'CAR'
+    if (marketType.includes('PLAYER_REC_YDS')) return 'REC YDS'
+    if (marketType.includes('PLAYER_REC_RECEPTIONS')) return 'REC'
+    if (marketType.includes('PLAYER_REC_TDS')) return 'REC TDS'
+    return marketType.replace('PLAYER_', '').replace(/_/g, ' ')
+  }
+
   const getPlayerInfo = (bet: Bet) => {
     const metadata = bet.market._metadata || {}
     const playerName = metadata.player || bet.market.participants[0] || 'Unknown Player'
@@ -183,7 +202,13 @@ export default function BetsPage() {
         statType = 'CAR'
       } else if (bet.market.marketType === 'PROPS') {
         // Try to infer from metadata or use generic
-        statType = metadata.statType || metadata.propType || 'PROPS'
+        statType =
+          metadata.statType ||
+          metadata.propType ||
+          lineJSON.propType ||
+          formatPropType(metadata.originalMarketType) ||
+          formatPropType(lineJSON.originalMarketType) ||
+          'PROPS'
       } else {
         statType = bet.market.marketType.replace('PLAYER_', '').replace(/_/g, ' ')
       }
