@@ -156,7 +156,10 @@ export async function validateBetPlacement(
   }
 
   // 3. Check if market type is allowed
-  if (!ruleset.allowedMarkets.includes(marketType)) {
+  const normalizedMarketType =
+    marketType === 'PROPS' || marketType.startsWith('PLAYER_') ? 'PROPS' : marketType
+  const allowedMarkets = ruleset.allowedMarkets || []
+  if (allowedMarkets.length > 0 && !allowedMarkets.includes(normalizedMarketType)) {
     errors.push(`Market type '${marketType}' is not allowed for this plan`)
   }
 

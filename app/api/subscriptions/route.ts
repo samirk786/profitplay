@@ -49,6 +49,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Ensure all plans support the same market features we currently expose
+    const requiredMarkets = ['MONEYLINE', 'SPREAD', 'TOTAL', 'PROPS']
+    const currentMarkets = ruleset.allowedMarkets || []
+    const missingMarkets = requiredMarkets.filter(m => !currentMarkets.includes(m))
+    if (missingMarkets.length > 0) {
+      await prisma.ruleset.update({
+        where: { id: ruleset.id },
+        data: {
+          allowedMarkets: [...new Set([...currentMarkets, ...requiredMarkets])]
+        }
+      })
+    }
+
     // Check if user already has an active subscription
     const existingSubscription = await prisma.subscription.findFirst({
       where: {
