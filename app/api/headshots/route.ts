@@ -25,6 +25,9 @@ const getPlayerName = (player: any) => {
 }
 
 const getHeadshotUrl = (player: any) =>
+  player?.PreferredHostedHeadshotUrl ||
+  player?.HostedHeadshotWithBackgroundUrl ||
+  player?.HostedHeadshotNoBackgroundUrl ||
   player?.HeadshotUrl ||
   player?.PhotoUrl ||
   player?.UsaTodayHeadshotUrl ||
@@ -38,6 +41,7 @@ const fetchPlayers = async (sportKey: string, apiKey: string) => {
   }
 
   const endpoints = [
+    `https://api.sportsdata.io/v3/${sportKey}/headshots/json/Headshots`,
     `https://api.sportsdata.io/v3/${sportKey}/images/json/Players`,
     `https://api.sportsdata.io/v3/${sportKey}/scores/json/Players`
   ]
