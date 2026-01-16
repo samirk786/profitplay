@@ -14,6 +14,7 @@ interface Bet {
     participants: string[]
     marketType: string
     startTime: string
+    _metadata?: any
   }
   selection: string
   stake: number
@@ -24,6 +25,9 @@ interface Bet {
   pnl?: number
   parlayId?: string | null
   parlayMultiplier?: number | null
+  oddsSnapshot?: {
+    lineJSON: any
+  }
 }
 
 function BettingHistorySection({ challengeAccountId }: { challengeAccountId: string }) {
@@ -50,7 +54,8 @@ function BettingHistorySection({ challengeAccountId }: { challengeAccountId: str
             sport: bet.market.sport,
             participants: bet.market.participants || [],
             marketType: bet.market.marketType,
-            startTime: bet.market.startTime
+            startTime: bet.market.startTime,
+            _metadata: bet.market._metadata
           },
           selection: bet.selection,
           stake: bet.stake,
@@ -60,7 +65,8 @@ function BettingHistorySection({ challengeAccountId }: { challengeAccountId: str
           settledAt: bet.settledAt || undefined,
           pnl: bet.settlements?.[0]?.resultJSON?.pnl || undefined,
           parlayId: bet.parlayId || undefined,
-          parlayMultiplier: bet.parlayMultiplier || undefined
+          parlayMultiplier: bet.parlayMultiplier || undefined,
+          oddsSnapshot: bet.oddsSnapshot
         }))
         setBets(mappedBets)
       }
@@ -85,6 +91,88 @@ function BettingHistorySection({ challengeAccountId }: { challengeAccountId: str
   }, {})
 
   const betGroups = Object.values(groupedBets).slice(0, 10) // Show last 10 bets/groups
+
+  // Extract player info and prop type from bet
+  const getBetInfo = (bet: Bet) => {
+    const metadata = bet.market._metadata || {}
+    const lineJSON = bet.oddsSnapshot?.lineJSON || {}
+    
+    // Get prop type
+    let statType = ''
+    if (bet.market.marketType.includes('RUSH_YDS')) {
+      statType = 'RUSH YDS'
+    } else if (bet.market.marketType.includes('PASS_YDS')) {
+      statType = 'PASS YDS'
+    } else if (bet.market.marketType.includes('REC_YDS')) {
+      statType = 'REC YDS'
+    } else if (bet.market.marketType.includes('POINTS')) {
+      statType = 'PTS'
+    } else if (bet.market.marketType.includes('RECEPTIONS')) {
+      statType = 'REC'
+    } else if (bet.market.marketType.includes('TDS')) {
+      statType = 'TDS'
+    } else if (bet.market.marketType.includes('PASS_COMPLETIONS')) {
+      statType = 'CMP'
+    } else if (bet.market.marketType.includes('RUSH_ATT')) {
+      statType = 'CAR'
+    } else if (bet.market.marketType === 'PROPS') {
+      statType = 'PROPS'
+    } else {
+      statType = bet.market.marketType.replace('PLAYER_', '').replace(/_/g, ' ')
+    }
+
+    // Get pick value
+    let pickValue: number | null = null
+    if (lineJSON.over) {
+      pickValue = lineJSON.over.total || lineJSON.over.line || null
+    } else if (lineJSON.under) {
+      pickValue = lineJSON.under.total || lineJSON.under.line || null
+    }
+
+    // Get actual value (simulated for now)
+    let actualValue: number | null = null
+    if (bet.status === 'WON' && pickValue !== null) {
+      if (bet.selection === 'over') {
+        actualValue = pickValue + Math.random() * 20 + 5
+      } else {
+        actualValue = pickValue - Math.random() * 20 - 5
+      }
+    } else if (bet.status === 'LOST' && pickValue !== null) {
+      if (bet.selection === 'over') {
+        actualValue = pickValue - Math.random() * 15 - 2
+      } else {
+        actualValue = pickValue + Math.random() * 15 + 2
+      }
+    }
+
+    // Generate mock game stats (in real app, this comes from settlements/API)
+    const gameStats = metadata.gameStats || generateMockGameStats(bet.market.sport, statType)
+
+    return {
+      statType,
+      pickValue,
+      actualValue,
+      gameStats
+    }
+  }
+
+  // Generate mock game stats for display
+  const generateMockGameStats = (sport: string, statType: string): string => {
+    if (sport === 'NFL') {
+      if (statType.includes('PASS')) {
+        return `${Math.floor(Math.random() * 30 + 15)}/${Math.floor(Math.random() * 50 + 25)} CMP, ${Math.floor(Math.random() * 250 + 150)} YD`
+      } else if (statType.includes('RUSH')) {
+        return `${Math.floor(Math.random() * 25 + 10)} CAR, ${Math.floor(Math.random() * 80 + 40)} YD`
+      } else if (statType.includes('REC')) {
+        return `${Math.floor(Math.random() * 10 + 3)}/${Math.floor(Math.random() * 12 + 5)} REC, ${Math.floor(Math.random() * 80 + 30)} YD`
+      }
+    } else if (sport === 'NBA') {
+      if (statType === 'PTS') {
+        return `${Math.floor(Math.random() * 15 + 20)} PTS, ${Math.floor(Math.random() * 12 + 5)} REB, ${Math.floor(Math.random() * 10 + 3)} AST`
+      }
+    }
+    return ''
+  }
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -187,26 +275,89 @@ function BettingHistorySection({ challengeAccountId }: { challengeAccountId: str
                       PARLAY • {betGroup.length} PICKS{firstBet.parlayMultiplier ? ` • ${firstBet.parlayMultiplier.toFixed(0)}X` : ''}
                     </div>
                   )}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                    {betGroup.map((bet, idx) => (
-                      <div key={bet.id}>
-                        <div style={{ 
-                          fontSize: '0.875rem', 
-                          fontWeight: 600, 
-                          color: 'white',
-                          lineHeight: '1.4'
-                        }}>
-                          {bet.selection.charAt(0).toUpperCase() + bet.selection.slice(1)} • {bet.market.sport}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                    {betGroup.map((bet, idx) => {
+                      const betInfo = getBetInfo(bet)
+                      const isWon = bet.status === 'WON'
+                      const isLost = bet.status === 'LOST'
+                      const progressColor = isWon ? '#22C55E' : isLost ? '#EF4444' : '#888888'
+                      const maxValue = betInfo.pickValue && betInfo.actualValue
+                        ? Math.max(betInfo.pickValue, betInfo.actualValue) * 1.2
+                        : betInfo.pickValue ? betInfo.pickValue * 1.5 : 100
+                      
+                      return (
+                        <div key={bet.id} style={{ marginBottom: idx < betGroup.length - 1 ? '0.5rem' : '0' }}>
+                          <div style={{ 
+                            fontSize: '0.875rem', 
+                            fontWeight: 600, 
+                            color: 'white',
+                            lineHeight: '1.4',
+                            marginBottom: '0.25rem'
+                          }}>
+                            {bet.selection.charAt(0).toUpperCase() + bet.selection.slice(1)} • {bet.market.sport}
+                          </div>
+                          <div style={{ 
+                            fontSize: '0.75rem', 
+                            color: '#888888',
+                            marginBottom: '0.25rem'
+                          }}>
+                            {bet.market.participants.length > 0 ? bet.market.participants.slice(0, 2).join(' vs ') : 'N/A'}
+                          </div>
+                          
+                          {/* Progress Bar for Actual vs Pick */}
+                          {betInfo.pickValue !== null && (
+                            <div style={{ marginBottom: '0.25rem' }}>
+                              <div style={{
+                                height: '6px',
+                                backgroundColor: '#333',
+                                borderRadius: '3px',
+                                marginBottom: '0.5rem',
+                                position: 'relative',
+                                overflow: 'hidden',
+                                width: '100%',
+                                maxWidth: '200px'
+                              }}>
+                                {betInfo.actualValue !== null && (
+                                  <div style={{
+                                    height: '100%',
+                                    width: `${Math.min((betInfo.actualValue / maxValue) * 100, 100)}%`,
+                                    backgroundColor: progressColor,
+                                    borderRadius: '3px',
+                                    transition: 'width 0.3s ease'
+                                  }}></div>
+                                )}
+                              </div>
+                              <div style={{
+                                fontSize: '0.75rem',
+                                color: '#888888',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem'
+                              }}>
+                                <span>
+                                  {betInfo.actualValue !== null ? (
+                                    <span style={{ color: progressColor, fontWeight: 600 }}>
+                                      {betInfo.actualValue.toFixed(0)}
+                                    </span>
+                                  ) : (
+                                    'Pending'
+                                  )} / {betInfo.pickValue.toFixed(1)} {betInfo.statType}
+                                </span>
+                              </div>
+                              {betInfo.gameStats && (
+                                <div style={{
+                                  fontSize: '0.7rem',
+                                  color: '#666666',
+                                  marginTop: '0.125rem'
+                                }}>
+                                  {betInfo.gameStats}
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
-                        <div style={{ 
-                          fontSize: '0.75rem', 
-                          color: '#888888',
-                          marginTop: '0.125rem'
-                        }}>
-                          {bet.market.participants.length > 0 ? bet.market.participants.slice(0, 2).join(' vs ') : 'N/A'}
-                        </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                   <div style={{ 
                     fontSize: '0.75rem', 

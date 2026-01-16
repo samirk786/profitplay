@@ -173,8 +173,19 @@ export default function BetsPage() {
         statType = 'REC YDS'
       } else if (bet.market.marketType.includes('POINTS')) {
         statType = 'PTS'
+      } else if (bet.market.marketType.includes('RECEPTIONS')) {
+        statType = 'REC'
+      } else if (bet.market.marketType.includes('TDS')) {
+        statType = 'TDS'
+      } else if (bet.market.marketType.includes('PASS_COMPLETIONS')) {
+        statType = 'CMP'
+      } else if (bet.market.marketType.includes('RUSH_ATT')) {
+        statType = 'CAR'
+      } else if (bet.market.marketType === 'PROPS') {
+        // Try to infer from metadata or use generic
+        statType = metadata.statType || 'PROPS'
       } else {
-        statType = bet.market.marketType.replace('PLAYER_', '').replace('_', ' ')
+        statType = bet.market.marketType.replace('PLAYER_', '').replace(/_/g, ' ')
       }
     }
 
@@ -197,6 +208,9 @@ export default function BetsPage() {
       actualValue = null // No actual value yet
     }
 
+    // Generate mock game stats (in real app, this comes from settlements/API)
+    const gameStats = metadata.gameStats || generateMockGameStats(bet.market.sport, statType)
+
     return {
       name: playerName,
       jersey: jerseyNumber,
@@ -204,8 +218,29 @@ export default function BetsPage() {
       engagement,
       pickValue,
       actualValue,
-      statType
+      statType,
+      gameStats
     }
+  }
+
+  // Generate mock game stats for display
+  const generateMockGameStats = (sport: string, statType: string): string => {
+    if (sport === 'NFL') {
+      if (statType.includes('PASS') || statType.includes('CMP')) {
+        return `${Math.floor(Math.random() * 30 + 15)}/${Math.floor(Math.random() * 50 + 25)} CMP, ${Math.floor(Math.random() * 250 + 150)} YD, ${Math.floor(Math.random() * 8 + 2)} CAR, ${Math.floor(Math.random() * 30 + 15)} YD`
+      } else if (statType.includes('RUSH') || statType.includes('CAR')) {
+        return `${Math.floor(Math.random() * 25 + 10)} CAR, ${Math.floor(Math.random() * 80 + 40)} YD, ${Math.floor(Math.random() * 5 + 2)}/${Math.floor(Math.random() * 7 + 3)} REC, ${Math.floor(Math.random() * 50 + 20)} YD`
+      } else if (statType.includes('REC')) {
+        return `${Math.floor(Math.random() * 10 + 3)}/${Math.floor(Math.random() * 12 + 5)} REC, ${Math.floor(Math.random() * 80 + 30)} YD`
+      }
+    } else if (sport === 'NBA') {
+      if (statType === 'PTS') {
+        return `${Math.floor(Math.random() * 15 + 20)} PTS, ${Math.floor(Math.random() * 12 + 5)} REB, ${Math.floor(Math.random() * 10 + 3)} AST`
+      }
+    } else if (sport === 'MLB') {
+      return `${Math.floor(Math.random() * 4 + 1)} H, ${Math.floor(Math.random() * 2)} HR, ${Math.floor(Math.random() * 3)} RBI`
+    }
+    return ''
   }
 
   const getOutcomeText = (group: Bet[]) => {
@@ -490,7 +525,7 @@ export default function BetsPage() {
                               marginBottom: '0.25rem'
                             }}>
                               {playerInfo.matchup}
-                  </div>
+                            </div>
                             <div style={{
                               display: 'flex',
                               alignItems: 'center',
@@ -501,8 +536,17 @@ export default function BetsPage() {
                             }}>
                               <span>👁</span>
                               <span>{playerInfo.engagement}</span>
-                  </div>
-                </div>
+                            </div>
+                            {playerInfo.gameStats && (
+                              <div style={{
+                                fontSize: '0.75rem',
+                                color: '#666666',
+                                lineHeight: '1.4'
+                              }}>
+                                {playerInfo.gameStats}
+                              </div>
+                            )}
+                          </div>
 
                           {/* Actual Column */}
                           <div style={{ minWidth: '80px' }}>
@@ -554,7 +598,7 @@ export default function BetsPage() {
                           </div>
 
                           {/* Pick Column */}
-                          <div>
+                  <div>
                             {playerInfo.pickValue !== null && (
                               <>
                                 <div style={{
@@ -605,9 +649,9 @@ export default function BetsPage() {
                                 </div>
                               </>
                             )}
-                          </div>
-                        </div>
-                      </div>
+                  </div>
+                  </div>
+                </div>
                     )
                   })}
 
