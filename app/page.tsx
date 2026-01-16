@@ -452,14 +452,6 @@ export default function Home() {
       <section className="hero-section">
         <h1 className="hero-heading">Earn It.</h1>
         <p className="hero-subtitle">Make your picks. Prove your edge.</p>
-        <div style={{ marginTop: '2rem' }}>
-          <Link
-            href="/pricing"
-            className="hero-cta-button"
-          >
-            View Plans
-          </Link>
-        </div>
       </section>
 
       {/* Filter Bars */}

@@ -868,7 +868,16 @@ export default function Dashboard() {
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ color: '#cccccc' }}>Goal:</span>
+                <span style={{ color: '#cccccc', display: 'flex', alignItems: 'center' }}>
+                  Goal
+                  <span className="info-tooltip">
+                    i
+                    <span className="info-tooltip-text">
+                      How much you need to make to pass the challenge.
+                    </span>
+                  </span>
+                  :
+                </span>
                 <span style={{ fontWeight: 600, color: 'white' }}>${profitTarget.toLocaleString()}/{challengeAccount.ruleset.profitTargetPct}%</span>
               </div>
               <div style={{ 
@@ -878,7 +887,16 @@ export default function Dashboard() {
                 margin: '0.25rem 0'
               }}></div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ color: '#cccccc' }}>Max Daily Loss:</span>
+                <span style={{ color: '#cccccc', display: 'flex', alignItems: 'center' }}>
+                  Max Daily Loss
+                  <span className="info-tooltip">
+                    i
+                    <span className="info-tooltip-text">
+                      The most you can lose in a day before your account fails.
+                    </span>
+                  </span>
+                  :
+                </span>
                 <span style={{ fontWeight: 600, color: 'white' }}>{challengeAccount.ruleset.maxDailyLossPct}%</span>
               </div>
               <div style={{ 
@@ -888,7 +906,16 @@ export default function Dashboard() {
                 margin: '0.25rem 0'
               }}></div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ color: '#cccccc' }}>Allowed Dip:</span>
+                <span style={{ color: '#cccccc', display: 'flex', alignItems: 'center' }}>
+                  Allowed Dip
+                  <span className="info-tooltip">
+                    i
+                    <span className="info-tooltip-text">
+                      The most you can lose overall before your account fails.
+                    </span>
+                  </span>
+                  :
+                </span>
                 <span style={{ fontWeight: 600, color: 'white' }}>${(challengeAccount.startBalance * (1 - challengeAccount.ruleset.maxDrawdownPct / 100)).toLocaleString()}/{challengeAccount.ruleset.maxDrawdownPct}%</span>
               </div>
               <div style={{ 
@@ -898,7 +925,16 @@ export default function Dashboard() {
                 margin: '0.25rem 0'
               }}></div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ color: '#cccccc' }}>Max Bet Size:</span>
+                <span style={{ color: '#cccccc', display: 'flex', alignItems: 'center' }}>
+                  Max Bet Size
+                  <span className="info-tooltip">
+                    i
+                    <span className="info-tooltip-text">
+                      The most money you can put on a single bet.
+                    </span>
+                  </span>
+                  :
+                </span>
                 <span style={{ fontWeight: 600, color: 'white' }}>$30</span>
               </div>
             </div>

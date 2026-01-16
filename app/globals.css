@@ -517,6 +517,47 @@ body {
   contain: layout style paint;
 }
 
+.info-tooltip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 6px;
+  border: 1px solid #555555;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 600;
+  color: #bbbbbb;
+  cursor: default;
+}
+
+.info-tooltip-text {
+  visibility: hidden;
+  opacity: 0;
+  position: absolute;
+  bottom: 140%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #1E1E1E;
+  color: #cccccc;
+  border: 1px solid #333333;
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  line-height: 1.3;
+  width: 220px;
+  text-align: center;
+  z-index: 10;
+  transition: opacity 0.15s ease;
+}
+
+.info-tooltip:hover .info-tooltip-text {
+  visibility: visible;
+  opacity: 1;
+}
+
 .player-card-body {
   padding-top: 16px;
   padding-bottom: 20px;

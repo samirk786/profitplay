@@ -16,14 +16,19 @@ export default function Header() {
       : 'Board'
   const [plan, setPlan] = useState<string | null>(null)
   const [startingScore, setStartingScore] = useState<number | null>(null)
+  const [profileLoading, setProfileLoading] = useState(false)
 
   useEffect(() => {
-    if (session?.user?.id) {
+    if (status === 'authenticated' && session?.user?.id) {
       fetchUserProfile()
+    } else if (status === 'unauthenticated') {
+      setPlan(null)
+      setStartingScore(null)
     }
-  }, [session])
+  }, [session, status])
 
   const fetchUserProfile = async () => {
+    setProfileLoading(true)
     try {
       const response = await fetch('/api/user/profile', {
         credentials: 'include'
@@ -35,10 +40,13 @@ export default function Header() {
       }
     } catch (error) {
       console.error('Error fetching user profile:', error)
+    } finally {
+      setProfileLoading(false)
     }
   }
 
   const formatPlan = (plan: string | null) => {
+    if (status === 'loading' || profileLoading) return 'Loading...'
     if (!plan) return 'None'
     return plan.charAt(0).toUpperCase() + plan.slice(1).toLowerCase()
   }
