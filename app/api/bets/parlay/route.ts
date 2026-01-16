@@ -110,28 +110,28 @@ export async function POST(request: NextRequest) {
     // Calculate parlay payout: stake * multiplier
     const potentialPayout = stake * multiplier
 
-    // Create individual bet records for each pick in the parlay
-    const bets = await Promise.all(
-      marketData.map(async (data) => {
-        return await prisma.bet.create({
-          data: {
-            challengeAccountId,
-            marketId: data.market.id,
-            oddsSnapshotId: data.oddsSnapshot.id,
-            selection: data.selection,
-            stake: stake, // Full stake for each bet (they're part of a parlay)
-            potentialPayout: potentialPayout, // Full parlay payout for each bet
-            status: 'OPEN',
-            parlayId: parlayId,
-            parlayMultiplier: multiplier
-          },
-          include: {
-            market: true,
-            oddsSnapshot: true
-          }
-        })
+    // Create individual bet records for each pick in the parlay (sequential to reduce DB connections)
+    const bets = []
+    for (const data of marketData) {
+      const bet = await prisma.bet.create({
+        data: {
+          challengeAccountId,
+          marketId: data.market.id,
+          oddsSnapshotId: data.oddsSnapshot.id,
+          selection: data.selection,
+          stake: stake, // Full stake for each bet (they're part of a parlay)
+          potentialPayout: potentialPayout, // Full parlay payout for each bet
+          status: 'OPEN',
+          parlayId: parlayId,
+          parlayMultiplier: multiplier
+        },
+        include: {
+          market: true,
+          oddsSnapshot: true
+        }
       })
-    )
+      bets.push(bet)
+    }
 
     // Create audit log
     await createAuditLog({
