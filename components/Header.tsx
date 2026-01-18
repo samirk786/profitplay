@@ -99,7 +99,7 @@ export default function Header() {
             <span style={{ color: 'white', fontSize: '0.875rem' }}>
               Current Plan: {formatPlan(plan)}
             </span>
-            {startingScore !== null && (
+            {typeof startingScore === 'number' && (
               <span style={{ color: 'white', fontSize: '0.875rem' }}>
                 Starting Score: ${startingScore.toLocaleString()}
               </span>
