@@ -481,6 +481,35 @@ body {
   width: 100%;
 }
 
+.like-btn {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid #444444;
+  background-color: rgba(18, 18, 18, 0.8);
+  color: #777777;
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.like-btn:hover {
+  color: #bbbbbb;
+  border-color: #666666;
+}
+
+.like-btn.liked {
+  color: #ffffff;
+  border-color: #ffffff;
+}
+
 .player-headshot {
   width: 60px;
   height: 60px;

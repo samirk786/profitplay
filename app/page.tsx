@@ -66,7 +66,7 @@ interface PlayerProp {
   sport: string
   jerseyNumber: number | null
   team?: string | null
-  matchup: string
+    matchup: string
   gameDateTime: string | null
 }
 
@@ -105,6 +105,7 @@ export default function Home() {
   const [playerProps, setPlayerProps] = useState<PlayerProp[]>([])
   const [loadingProps, setLoadingProps] = useState(false)
   const [propsError, setPropsError] = useState<string | null>(null)
+  const [likedPicks, setLikedPicks] = useState<Record<string, PlayerProp>>({})
 
   // State for sport and category filters
   const [selectedSport, setSelectedSport] = useState("NBA")
@@ -228,6 +229,25 @@ export default function Home() {
     loadProps()
   }, [selectedSport, selectedCategory])
 
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('likedPicks')
+      if (saved) {
+        setLikedPicks(JSON.parse(saved))
+      }
+    } catch (error) {
+      console.error('Failed to load liked picks:', error)
+    }
+  }, [])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('likedPicks', JSON.stringify(likedPicks))
+    } catch (error) {
+      console.error('Failed to save liked picks:', error)
+    }
+  }, [likedPicks])
+
   // Extract unique matchups from players filtered by sport and category
   const availableMatchups = [...new Set(
     playerProps
@@ -305,6 +325,19 @@ export default function Home() {
         return updated
       })
     }
+  }
+
+  const toggleLike = (player: PlayerProp) => {
+    const key = getPropKey(player.sport, player.playerName, player.category)
+    setLikedPicks((prev) => {
+      const updated = { ...prev }
+      if (updated[key]) {
+        delete updated[key]
+      } else {
+        updated[key] = player
+      }
+      return updated
+    })
   }
 
   // Handler for bet slip toggle
@@ -556,6 +589,64 @@ export default function Home() {
         </div>
       )}
 
+      {/* Liked Picks */}
+      {activeTab === "Board" && Object.keys(likedPicks).length > 0 && (
+        <section style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 2rem 1.5rem' }}>
+          <div style={{ marginBottom: '1rem' }}>
+            <h2 style={{ fontSize: '1.25rem', color: 'white', marginBottom: '0.25rem' }}>Liked Picks</h2>
+            <p style={{ color: '#888888', fontSize: '0.875rem' }}>
+              Your saved picks across sports and categories.
+            </p>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem' }}>
+            {Object.values(likedPicks).map((player) => {
+              const pickKey = getPropKey(player.sport, player.playerName, player.category)
+              const selectedChoice = selectedPicks[pickKey]?.choice
+              return (
+                <div
+                  key={pickKey}
+                  style={{
+                    backgroundColor: '#1E1E1E',
+                    border: '1px solid #333333',
+                    borderRadius: '12px',
+                    padding: '1rem',
+                    position: 'relative'
+                  }}
+                >
+                  <button
+                    className={`like-btn ${likedPicks[pickKey] ? 'liked' : ''}`}
+                    onClick={() => toggleLike(player)}
+                    aria-label="Toggle liked pick"
+                  >
+                    ♥
+                  </button>
+                  <div style={{ fontWeight: 600, color: 'white', marginBottom: '0.25rem' }}>
+                    {player.playerName}
+                  </div>
+                  <div style={{ fontSize: '0.875rem', color: '#cccccc', marginBottom: '0.5rem' }}>
+                    {player.line} {player.category} • {player.sport}
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button
+                      className={`choice-btn player-button over-button ${selectedChoice === 'over' ? 'choice-btn-selected selected' : ''}`}
+                      onClick={() => handleChoice(player, 'Over')}
+                    >
+                      Over
+                    </button>
+                    <button
+                      className={`choice-btn player-button under-button ${selectedChoice === 'under' ? 'choice-btn-selected selected' : ''}`}
+                      onClick={() => handleChoice(player, 'Under')}
+                    >
+                      Under
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
       {/* Player Cards Section */}
       {activeTab === "Board" && (
       <section className="players-section">
@@ -578,7 +669,14 @@ export default function Home() {
             
             return (
               <div key={player.id} className="player-card">
-                <div className="player-card-top">
+                <div className="player-card-top" style={{ position: 'relative' }}>
+                  <button
+                    className={`like-btn ${likedPicks[pickKey] ? 'liked' : ''}`}
+                    onClick={() => toggleLike(player)}
+                    aria-label="Toggle liked pick"
+                  >
+                    ♥
+                  </button>
                   <div className="player-name">{player.displayName}</div>
                   <div className="player-jersey-wrapper">
                     <JerseyIcon number={player.jerseyNumber} />
