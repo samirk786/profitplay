@@ -413,7 +413,7 @@ function BettingHistorySection({ challengeAccountId }: { challengeAccountId: str
                                 color: 'white',
                                 marginBottom: '0.25rem'
                               }}>
-                                {betInfo.playerName.split(' ').map((n: string) => n[0]).join('. ')}
+                                {betInfo.playerName}
                               </div>
                               {isParlay && idx === 1 && (
                                 <div style={{
