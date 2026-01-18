@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Header from '@/components/Header'
+import JerseyIcon from '@/components/JerseyIcon'
 
 interface Bet {
   id: string
@@ -116,6 +117,9 @@ function BettingHistorySection({ challengeAccountId }: { challengeAccountId: str
     const metadata = bet.market._metadata || {}
     const lineJSON = bet.oddsSnapshot?.lineJSON || {}
     const playerName = metadata.player || bet.market.participants?.[0] || 'Unknown Player'
+    const jersey = metadata.jersey || null
+    const matchup = metadata.matchup || bet.market.participants?.join(' vs ') || 'N/A'
+    const engagement = metadata.engagement || '0'
     
     // Get prop type
     let statType = ''
@@ -176,11 +180,26 @@ function BettingHistorySection({ challengeAccountId }: { challengeAccountId: str
 
     return {
       playerName,
+      jersey,
+      matchup,
+      engagement,
       statType,
       pickValue,
       actualValue,
       gameStats
     }
+  }
+
+  const getOutcomeText = (group: Bet[]) => {
+    const firstBet = group[0]
+    const totalPnl = firstBet.pnl || 0
+
+    if (totalPnl > 0) {
+      return { text: `$${totalPnl.toFixed(0)} Won`, color: '#22C55E' }
+    } else if (totalPnl < 0) {
+      return { text: `$${Math.abs(totalPnl).toFixed(0)} Lost`, color: '#EF4444' }
+    }
+    return { text: '$0 Push', color: '#9CA3AF' }
   }
 
   // Generate mock game stats for display
@@ -275,169 +294,296 @@ function BettingHistorySection({ challengeAccountId }: { challengeAccountId: str
             const firstBet = betGroup[0]
             const isParlay = betGroup.length > 1 && firstBet.parlayId
             const statusColor = getStatusColor(firstBet.status)
+            const outcome = getOutcomeText(betGroup)
             
             return (
               <div
                 key={isParlay ? firstBet.parlayId : firstBet.id}
                 style={{
                   backgroundColor: '#121212',
-                  borderRadius: '12px',
-                  padding: '1rem',
-                  border: `1px solid ${statusColor === '#EAB308' ? '#EAB30833' : statusColor === '#22C55E' ? '#22C55E33' : '#EF444433'}`,
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'flex-start'
+                  borderRadius: '16px',
+                  padding: '1.5rem',
+                  border: '1px solid #333'
                 }}
               >
-                <div style={{ flex: 1 }}>
-                  {isParlay && (
-                    <div style={{ 
-                      fontSize: '0.75rem', 
-                      color: '#888888', 
-                      marginBottom: '0.5rem',
-                      fontWeight: 600,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px'
+                {/* Top Section - Outcome, Multiplier, Picks */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  marginBottom: '1rem',
+                  paddingBottom: '1rem',
+                  borderBottom: '1px solid #333'
+                }}>
+                  <div>
+                    <div style={{
+                      fontSize: '1.5rem',
+                      fontWeight: 700,
+                      color: outcome.color,
+                      marginBottom: '0.25rem'
                     }}>
-                      PARLAY • {betGroup.length} PICKS{firstBet.parlayMultiplier ? ` • ${firstBet.parlayMultiplier.toFixed(0)}X` : ''}
+                      {outcome.text}
                     </div>
-                  )}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '0.5rem' }}>
-                    {betGroup.map((bet, idx) => {
-                      const betInfo = getBetInfo(bet)
-                      const isWon = bet.status === 'WON'
-                      const isLost = bet.status === 'LOST'
-                      const progressColor = isWon ? '#22C55E' : isLost ? '#EF4444' : '#888888'
-                      const maxValue = betInfo.pickValue && betInfo.actualValue
-                        ? Math.max(betInfo.pickValue, betInfo.actualValue) * 1.2
-                        : betInfo.pickValue ? betInfo.pickValue * 1.5 : 100
-                      
-                      return (
-                        <div key={bet.id} style={{ marginBottom: idx < betGroup.length - 1 ? '0.5rem' : '0' }}>
-                        <div style={{ 
-                          fontSize: '1rem', 
-                          fontWeight: 700, 
-                          color: 'white',
-                          lineHeight: '1.4',
-                          marginBottom: '0.25rem'
-                        }}>
-                          {betInfo.playerName}
-                        </div>
-                        <div style={{ 
-                          fontSize: '0.875rem', 
-                          color: '#cccccc',
-                          marginBottom: '0.25rem'
-                        }}>
-                          {betInfo.pickValue !== null ? betInfo.pickValue.toFixed(1) : '--'} {betInfo.statType}
-                          <span style={{ color: '#666666', marginLeft: '0.5rem' }}>
-                            {bet.selection.toUpperCase()}
-                          </span>
-                        </div>
-                        <div style={{ 
-                          fontSize: '0.75rem', 
-                          color: '#888888',
-                          marginBottom: '0.25rem'
-                        }}>
-                          {bet.market.participants.length > 0 ? bet.market.participants.slice(0, 2).join(' vs ') : 'N/A'}
-                        </div>
-                          
-                          {/* Progress Bar for Actual vs Pick */}
-                          {betInfo.pickValue !== null && (
-                            <div style={{ marginBottom: '0.25rem' }}>
+                    {firstBet.parlayMultiplier && (
+                      <div style={{
+                        fontSize: '0.875rem',
+                        color: '#888888',
+                        marginBottom: '0.25rem'
+                      }}>
+                        MAX {firstBet.parlayMultiplier.toFixed(2)}x
+                      </div>
+                    )}
+                    <div style={{
+                      fontSize: '0.875rem',
+                      color: '#888888'
+                    }}>
+                      {betGroup.length} {betGroup.length === 1 ? 'PICK' : 'PICKS'}
+                    </div>
+                  </div>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    color: 'white',
+                    fontSize: '1.25rem',
+                    fontWeight: 600
+                  }}>
+                    <span>ProfitPlay</span>
+                  </div>
+                </div>
+
+                {/* Table Headers */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '2fr 1fr 1fr',
+                  gap: '1rem',
+                  paddingBottom: '0.75rem',
+                  borderBottom: '1px solid #333',
+                  marginBottom: '1rem'
+                }}>
+                  <div style={{ color: '#888888', fontSize: '0.875rem', fontWeight: 500 }}>PLAYER</div>
+                  <div style={{ color: '#888888', fontSize: '0.875rem', fontWeight: 500 }}>ACTUAL</div>
+                  <div style={{ color: '#888888', fontSize: '0.875rem', fontWeight: 500 }}>PICK</div>
+                </div>
+
+                {/* Player Entries */}
+                {betGroup.map((bet, idx) => {
+                  const betInfo = getBetInfo(bet)
+                  const isWon = bet.status === 'WON'
+                  const isLost = bet.status === 'LOST'
+                  const isOpen = bet.status === 'OPEN'
+                  const progressColor = isWon ? '#22C55E' : isLost ? '#EF4444' : '#888888'
+                  const maxValue = betInfo.pickValue && betInfo.actualValue
+                    ? Math.max(betInfo.pickValue, betInfo.actualValue) * 1.2
+                    : betInfo.pickValue ? betInfo.pickValue * 1.5 : 100
+
+                  return (
+                    <div
+                      key={bet.id}
+                      style={{
+                        marginBottom: idx < betGroup.length - 1 ? '2rem' : '0',
+                        paddingBottom: idx < betGroup.length - 1 ? '2rem' : '0',
+                        borderBottom: idx < betGroup.length - 1 ? '1px solid #333' : 'none'
+                      }}
+                    >
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: '2fr 1fr 1fr',
+                        gap: '1.5rem',
+                        alignItems: 'flex-start',
+                        position: 'relative',
+                        zIndex: 0
+                      }}>
+                        {/* Player Column */}
+                        <div style={{ position: 'relative', overflow: 'hidden' }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', marginBottom: '0.5rem' }}>
+                            <div style={{ 
+                              position: 'relative', 
+                              width: '60px', 
+                              height: '60px', 
+                              flexShrink: 0,
+                              overflow: 'hidden'
+                            }}>
+                              <JerseyIcon number={betInfo.jersey} />
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{
-                                height: '6px',
+                                fontSize: '1.125rem',
+                                fontWeight: 600,
+                                color: 'white',
+                                marginBottom: '0.25rem'
+                              }}>
+                                {betInfo.playerName.split(' ').map((n: string) => n[0]).join('. ')}
+                              </div>
+                              {isParlay && idx === 1 && (
+                                <div style={{
+                                  fontSize: '0.75rem',
+                                  color: '#EAB308',
+                                  fontWeight: 600,
+                                  marginBottom: '0.25rem'
+                                }}>
+                                  MULTIPLIER BOOST
+                                </div>
+                              )}
+                              <div style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                padding: '0.25rem 0.75rem',
+                                borderRadius: '12px',
+                                backgroundColor: isWon ? 'rgba(34, 197, 94, 0.2)' : isLost ? 'rgba(239, 68, 68, 0.2)' : 'rgba(156, 163, 175, 0.2)',
+                                color: isWon ? '#22C55E' : isLost ? '#EF4444' : '#9CA3AF',
+                                fontSize: '0.75rem',
+                                fontWeight: 600,
+                                marginBottom: '0.5rem'
+                              }}>
+                                {isWon ? '✓' : isLost ? '✕' : '○'}
+                                <span>{bet.status}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div style={{
+                            fontSize: '0.875rem',
+                            color: '#888888',
+                            marginBottom: '0.25rem'
+                          }}>
+                            {betInfo.matchup}
+                          </div>
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            fontSize: '0.75rem',
+                            color: '#666666',
+                            marginBottom: '0.25rem'
+                          }}>
+                            <span>👁</span>
+                            <span>{betInfo.engagement}</span>
+                          </div>
+                          {betInfo.gameStats && (
+                            <div style={{
+                              fontSize: '0.75rem',
+                              color: '#666666',
+                              lineHeight: '1.4'
+                            }}>
+                              {betInfo.gameStats}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Actual Column */}
+                        <div style={{ minWidth: '80px' }}>
+                          {betInfo.actualValue !== null ? (
+                            <>
+                              <div style={{
+                                height: '8px',
                                 backgroundColor: '#333',
-                                borderRadius: '3px',
-                                marginBottom: '0.5rem',
+                                borderRadius: '4px',
+                                marginBottom: '0.75rem',
                                 position: 'relative',
                                 overflow: 'hidden',
-                                width: '100%',
-                                maxWidth: '200px'
+                                width: '100%'
                               }}>
-                                {betInfo.actualValue !== null && (
-                                  <div style={{
-                                    height: '100%',
-                                    width: `${Math.min((betInfo.actualValue / maxValue) * 100, 100)}%`,
-                                    backgroundColor: progressColor,
-                                    borderRadius: '3px',
-                                    transition: 'width 0.3s ease'
-                                  }}></div>
-                                )}
+                                <div style={{
+                                  height: '100%',
+                                  width: `${Math.min((betInfo.actualValue / maxValue) * 100, 100)}%`,
+                                  backgroundColor: progressColor,
+                                  borderRadius: '4px',
+                                  transition: 'width 0.3s ease'
+                                }}></div>
+                              </div>
+                              <div style={{
+                                fontSize: '1.125rem',
+                                fontWeight: 700,
+                                color: progressColor,
+                                lineHeight: '1.2'
+                              }}>
+                                {betInfo.actualValue.toFixed(0)}
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div style={{
+                                height: '8px',
+                                backgroundColor: '#333',
+                                borderRadius: '4px',
+                                marginBottom: '0.75rem',
+                                width: '100%'
+                              }}></div>
+                              <div style={{
+                                fontSize: '0.875rem',
+                                color: '#666666'
+                              }}>
+                                Pending
+                              </div>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Pick Column */}
+                        <div>
+                          {betInfo.pickValue !== null && (
+                            <>
+                              <div style={{
+                                fontSize: '1rem',
+                                fontWeight: 600,
+                                color: 'white',
+                                marginBottom: '0.25rem'
+                              }}>
+                                {betInfo.pickValue.toFixed(1)}
                               </div>
                               <div style={{
                                 fontSize: '0.75rem',
                                 color: '#888888',
+                                marginBottom: '0.5rem'
+                              }}>
+                                {betInfo.statType}
+                              </div>
+                              <div style={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '0.5rem'
+                                gap: '0.5rem',
+                                marginBottom: '0.5rem'
                               }}>
-                                <span>
-                                  {betInfo.actualValue !== null ? (
-                                    <span style={{ color: progressColor, fontWeight: 600 }}>
-                                      {betInfo.actualValue.toFixed(0)}
-                                    </span>
-                                  ) : (
-                                    'Pending'
-                                  )} / {betInfo.pickValue.toFixed(1)} {betInfo.statType}
-                                </span>
-                              </div>
-                              {betInfo.gameStats && (
                                 <div style={{
-                                  fontSize: '0.7rem',
-                                  color: '#666666',
-                                  marginTop: '0.125rem'
+                                  width: '32px',
+                                  height: '32px',
+                                  borderRadius: '50%',
+                                  backgroundColor: bet.selection === 'over' ? '#22C55E' : '#EF4444',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: 'white',
+                                  fontSize: '1.25rem',
+                                  fontWeight: 600
                                 }}>
-                                  {betInfo.gameStats}
+                                  {bet.selection === 'over' ? '↑' : '↓'}
                                 </div>
-                              )}
-                            </div>
+                              </div>
+                              <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.25rem',
+                                fontSize: '0.75rem',
+                                color: '#666666'
+                              }}>
+                                <span>👤</span>
+                                <span>{betInfo.engagement}</span>
+                              </div>
+                            </>
                           )}
                         </div>
-                      )
-                    })}
-                  </div>
-                  <div style={{ 
-                    fontSize: '0.75rem', 
-                    color: '#888888'
-                  }}>
-                    {formatDate(firstBet.placedAt)}
-                  </div>
-                </div>
-                
-                <div style={{ textAlign: 'right', marginLeft: '1rem', flexShrink: 0 }}>
-                  <div style={{ 
-                    fontSize: '0.875rem', 
-                    fontWeight: 600, 
-                    color: statusColor,
-                    marginBottom: '0.25rem'
-                  }}>
-                    {firstBet.status}
-                  </div>
-                  <div style={{ 
-                    fontSize: '0.875rem', 
-                    color: '#cccccc',
-                    marginBottom: '0.125rem'
-                  }}>
-                    ${firstBet.stake.toFixed(2)}
-                  </div>
-                  {firstBet.status === 'OPEN' && (
-                    <div style={{ 
-                      fontSize: '0.75rem', 
-                      color: '#888888'
-                    }}>
-                      ${firstBet.potentialPayout.toFixed(2)} potential
+                      </div>
                     </div>
-                  )}
-                  {firstBet.pnl !== undefined && firstBet.status !== 'OPEN' && (
-                    <div style={{ 
-                      fontSize: '0.875rem', 
-                      fontWeight: 600,
-                      color: firstBet.pnl >= 0 ? '#22C55E' : '#EF4444',
-                      marginTop: '0.125rem'
-                    }}>
-                      {firstBet.pnl >= 0 ? '+' : ''}${firstBet.pnl.toFixed(2)}
-                    </div>
-                  )}
+                  )
+                })}
+
+                <div style={{ 
+                  fontSize: '0.75rem', 
+                  color: '#888888',
+                  marginTop: '1rem'
+                }}>
+                  {formatDate(firstBet.placedAt)}
                 </div>
               </div>
             )
