@@ -70,6 +70,11 @@ interface PlayerProp {
   gameDateTime: string | null
 }
 
+interface SelectedPick extends PlayerProp {
+  choice: 'over' | 'under'
+  marketId: string
+}
+
 // Helper function to generate composite key for prop selection
 const getPropKey = (sport: string, playerName: string, category: string) => {
   return `${sport}-${playerName}-${category}`
@@ -83,8 +88,8 @@ export default function Home() {
   const { data: session } = useSession()
   const router = useRouter()
 
-  // State to track selected picks - keyed by composite key (sport-playerName-category), values are "over", "under", or null
-  const [selectedPicks, setSelectedPicks] = useState<Record<string, 'over' | 'under' | null>>({})
+  // State to track selected picks across sports/categories
+  const [selectedPicks, setSelectedPicks] = useState<Record<string, SelectedPick>>({})
   
   // State for bet slip open/closed
   const [isBetSlipOpen, setIsBetSlipOpen] = useState(false)
@@ -288,21 +293,8 @@ export default function Home() {
     }
   }, [visiblePlayers, playerHeadshots])
 
-  // Derive active picks with choice field and market ID
-  const activePicks = playerProps
-    .filter(player => {
-      const key = getPropKey(player.sport, player.playerName, player.category)
-      return selectedPicks[key]
-    })
-    .map(player => {
-      const key = getPropKey(player.sport, player.playerName, player.category)
-      const choice = selectedPicks[key]
-      return {
-        ...player,
-        choice, // "over" or "under"
-        marketId: player.id, // Market ID from the API
-      }
-    })
+  // Derive active picks from stored selections
+  const activePicks = Object.values(selectedPicks)
   const picksCount = activePicks.length
 
   // Helper function for multiplier logic
@@ -332,10 +324,10 @@ export default function Home() {
   const multiplier = getMultiplier(picksCount)
 
   // Handler for Over/Under button clicks
-  const handleChoice = (sport: string, playerName: string, category: string, choice: string) => {
+  const handleChoice = (player: PlayerProp, choice: string) => {
     const lowerChoice = choice.toLowerCase() as 'over' | 'under'
-    const key = getPropKey(sport, playerName, category)
-    const currentSelection = selectedPicks[key]
+    const key = getPropKey(player.sport, player.playerName, player.category)
+    const currentSelection = selectedPicks[key]?.choice
     
     // Prevent adding more than 8 picks
     if (!currentSelection && picksCount >= 8) {
@@ -347,7 +339,7 @@ export default function Home() {
     if (currentSelection === lowerChoice) {
       setSelectedPicks(prev => {
         const updated = { ...prev }
-        updated[key] = null
+        delete updated[key]
         console.log("Pick changed:", key, null)
         return updated
       })
@@ -355,7 +347,11 @@ export default function Home() {
       // Set the new selection
       setSelectedPicks(prev => {
         const updated = { ...prev }
-        updated[key] = lowerChoice
+        updated[key] = {
+          ...player,
+          choice: lowerChoice,
+          marketId: player.id
+        }
         console.log("Pick changed:", key, lowerChoice)
         return updated
       })
@@ -465,7 +461,7 @@ export default function Home() {
       console.log('Parlay placed successfully:', result)
 
       // Clear selections and bet slip
-      setSelectedPicks({})
+        setSelectedPicks({})
       setBetAmount(null)
       setCustomAmount("")
       setIsBetSlipOpen(false)
@@ -629,7 +625,7 @@ export default function Home() {
         ) : (
           visiblePlayers.map((player) => {
             const pickKey = getPropKey(player.sport, player.playerName, player.category)
-            const selectedChoice = selectedPicks[pickKey]
+            const selectedChoice = selectedPicks[pickKey]?.choice
             
             return (
               <div key={player.id} className="player-card">
@@ -664,13 +660,13 @@ export default function Home() {
                 <div className="player-actions">
                   <button 
                     className={`choice-btn player-button over-button ${selectedChoice === 'over' ? 'choice-btn-selected selected' : ''}`}
-                    onClick={() => handleChoice(player.sport, player.playerName, player.category, 'Over')}
+                    onClick={() => handleChoice(player, 'Over')}
                   >
                     Over
                   </button>
                   <button 
                     className={`choice-btn player-button under-button ${selectedChoice === 'under' ? 'choice-btn-selected selected' : ''}`}
-                    onClick={() => handleChoice(player.sport, player.playerName, player.category, 'Under')}
+                    onClick={() => handleChoice(player, 'Under')}
                   >
                     Under
                   </button>
