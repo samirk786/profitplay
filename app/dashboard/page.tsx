@@ -115,6 +115,7 @@ function BettingHistorySection({ challengeAccountId }: { challengeAccountId: str
   const getBetInfo = (bet: Bet) => {
     const metadata = bet.market._metadata || {}
     const lineJSON = bet.oddsSnapshot?.lineJSON || {}
+    const playerName = metadata.player || bet.market.participants?.[0] || 'Unknown Player'
     
     // Get prop type
     let statType = ''
@@ -174,6 +175,7 @@ function BettingHistorySection({ challengeAccountId }: { challengeAccountId: str
     const gameStats = metadata.gameStats || generateMockGameStats(bet.market.sport, statType)
 
     return {
+      playerName,
       statType,
       pickValue,
       actualValue,
@@ -312,22 +314,32 @@ function BettingHistorySection({ challengeAccountId }: { challengeAccountId: str
                       
                       return (
                         <div key={bet.id} style={{ marginBottom: idx < betGroup.length - 1 ? '0.5rem' : '0' }}>
-                          <div style={{ 
-                            fontSize: '0.875rem', 
-                            fontWeight: 600, 
-                            color: 'white',
-                            lineHeight: '1.4',
-                            marginBottom: '0.25rem'
-                          }}>
-                            {bet.selection.charAt(0).toUpperCase() + bet.selection.slice(1)} • {bet.market.sport}
-                          </div>
-                          <div style={{ 
-                            fontSize: '0.75rem', 
-                            color: '#888888',
-                            marginBottom: '0.25rem'
-                          }}>
-                            {bet.market.participants.length > 0 ? bet.market.participants.slice(0, 2).join(' vs ') : 'N/A'}
-                          </div>
+                        <div style={{ 
+                          fontSize: '1rem', 
+                          fontWeight: 700, 
+                          color: 'white',
+                          lineHeight: '1.4',
+                          marginBottom: '0.25rem'
+                        }}>
+                          {betInfo.playerName}
+                        </div>
+                        <div style={{ 
+                          fontSize: '0.875rem', 
+                          color: '#cccccc',
+                          marginBottom: '0.25rem'
+                        }}>
+                          {betInfo.pickValue !== null ? betInfo.pickValue.toFixed(1) : '--'} {betInfo.statType}
+                          <span style={{ color: '#666666', marginLeft: '0.5rem' }}>
+                            {bet.selection.toUpperCase()}
+                          </span>
+                        </div>
+                        <div style={{ 
+                          fontSize: '0.75rem', 
+                          color: '#888888',
+                          marginBottom: '0.25rem'
+                        }}>
+                          {bet.market.participants.length > 0 ? bet.market.participants.slice(0, 2).join(' vs ') : 'N/A'}
+                        </div>
                           
                           {/* Progress Bar for Actual vs Pick */}
                           {betInfo.pickValue !== null && (
