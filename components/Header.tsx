@@ -14,8 +14,8 @@ export default function Header() {
     : pathname === '/dashboard' || pathname?.startsWith('/dashboard')
       ? 'Account'
       : 'Board'
-  const [plan, setPlan] = useState<string | null>(null)
-  const [startingScore, setStartingScore] = useState<number | null>(null)
+  const [plan, setPlan] = useState<string | null | undefined>(undefined)
+  const [startingScore, setStartingScore] = useState<number | null | undefined>(undefined)
   const [profileLoading, setProfileLoading] = useState(false)
 
   useEffect(() => {
@@ -46,7 +46,7 @@ export default function Header() {
   }
 
   const formatPlan = (plan: string | null) => {
-    if (status === 'loading' || profileLoading) return 'Loading...'
+    if (status === 'loading' || profileLoading || plan === undefined) return 'Loading...'
     if (!plan) return 'None'
     return plan.charAt(0).toUpperCase() + plan.slice(1).toLowerCase()
   }
