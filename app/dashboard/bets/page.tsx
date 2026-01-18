@@ -38,7 +38,6 @@ export default function BetsPage() {
   const [challengeAccountId, setChallengeAccountId] = useState<string | null>(null)
   const [filter, setFilter] = useState('ALL')
   const [sportFilter, setSportFilter] = useState('ALL')
-  const [playerHeadshots, setPlayerHeadshots] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -163,9 +162,6 @@ export default function BetsPage() {
     return marketType.replace('PLAYER_', '').replace(/_/g, ' ')
   }
 
-  const getHeadshotKey = (sport: string, playerName: string, team?: string | null) => {
-    return `${sport}-${playerName}-${team || ''}`
-  }
 
   const getPlayerInfo = (bet: Bet) => {
     const metadata = bet.market._metadata || {}
@@ -289,63 +285,6 @@ export default function BetsPage() {
     }
   }
 
-  const headshotCandidates = useMemo(() => {
-    const items: Array<{ sport: string; playerName: string; team?: string | null }> = []
-    betGroups.forEach((group) => {
-      group.forEach((bet) => {
-        const info = getPlayerInfo(bet)
-        items.push({ sport: bet.market.sport, playerName: info.name, team: info.team })
-      })
-    })
-    return items
-  }, [betGroups])
-
-  useEffect(() => {
-    const loadHeadshots = async () => {
-      const missing = headshotCandidates.filter((player) => {
-        const key = getHeadshotKey(player.sport, player.playerName, player.team)
-        return !playerHeadshots[key]
-      })
-      if (missing.length === 0) return
-
-      try {
-        const results = await Promise.all(
-          missing.map(async (player) => {
-            const params = new URLSearchParams({
-              sport: player.sport,
-              playerName: player.playerName
-            })
-            if (player.team) {
-              params.append('team', player.team)
-            }
-            const response = await fetch(`/api/headshots?${params.toString()}`)
-            if (!response.ok) return null
-            const data = await response.json()
-            if (!data?.url) return null
-            const key = getHeadshotKey(player.sport, player.playerName, player.team)
-            return { key, url: data.url as string }
-          })
-        )
-
-        const updates = results.filter(Boolean) as Array<{ key: string; url: string }>
-        if (updates.length > 0) {
-          setPlayerHeadshots((prev) => {
-            const next = { ...prev }
-            updates.forEach((item) => {
-              next[item.key] = item.url
-            })
-            return next
-          })
-        }
-      } catch (error) {
-        console.error('Failed to load headshots:', error)
-      }
-    }
-
-    if (headshotCandidates.length > 0) {
-      loadHeadshots()
-    }
-  }, [headshotCandidates, playerHeadshots])
 
   if (status === 'loading' || loading) {
     return (
@@ -571,16 +510,7 @@ export default function BetsPage() {
                                 flexShrink: 0,
                                 overflow: 'hidden'
                               }}>
-                                {playerHeadshots[getHeadshotKey(bet.market.sport, playerInfo.name, playerInfo.team)] ? (
-                                  <img
-                                    src={playerHeadshots[getHeadshotKey(bet.market.sport, playerInfo.name, playerInfo.team)]}
-                                    alt={`${playerInfo.name} headshot`}
-                                    className="player-headshot"
-                                    loading="lazy"
-                                  />
-                                ) : (
-                                  <JerseyIcon number={playerInfo.jersey} />
-                                )}
+                                <JerseyIcon number={playerInfo.jersey} />
                               </div>
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <div style={{

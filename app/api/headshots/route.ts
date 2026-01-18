@@ -71,10 +71,7 @@ export async function GET(request: NextRequest) {
   try {
     const apiKey = process.env.SPORTSDATA_API_KEY
     if (!apiKey) {
-      return NextResponse.json(
-        { error: 'Headshots not configured' },
-        { status: 500 }
-      )
+      return NextResponse.json({ url: null })
     }
 
     const { searchParams } = new URL(request.url)
