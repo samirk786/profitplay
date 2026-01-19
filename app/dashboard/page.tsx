@@ -313,19 +313,16 @@ function BettingHistorySection({ challengeAccountId }: { challengeAccountId: str
                 }}>
                   <div>
                     <div style={{
+                      display: 'flex',
+                      alignItems: 'baseline',
+                      gap: '0.5rem',
                       fontSize: '1.5rem',
                       fontWeight: 700,
                       color: 'white',
                       marginBottom: '0.25rem'
                     }}>
-                      {outcome.wager}
-                    </div>
-                    <div style={{
-                      fontSize: '0.875rem',
-                      color: '#888888',
-                      marginBottom: '0.25rem'
-                    }}>
-                      {outcome.potential}
+                      <span>{outcome.wager}</span>
+                      <span style={{ fontSize: '1.5rem', fontWeight: 700 }}>{outcome.potential}</span>
                     </div>
                     {firstBet.parlayMultiplier && (
                       <div style={{

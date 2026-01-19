@@ -99,11 +99,6 @@ export default function Header() {
             <span style={{ color: 'white', fontSize: '0.875rem' }}>
               Current Plan: {formatPlan(plan)}
             </span>
-            {typeof startingScore === 'number' && (
-              <span style={{ color: 'white', fontSize: '0.875rem' }}>
-                Starting Score: ${startingScore.toLocaleString()}
-              </span>
-            )}
           </div>
           <span style={{ color: 'white', fontSize: '0.875rem' }}>
             {session.user?.email}
@@ -121,5 +116,17 @@ export default function Header() {
         </Link>
       )}
     </nav>
+    {session && typeof startingScore === 'number' && (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'flex-end',
+        padding: '0.75rem 2rem 0',
+        fontSize: '1rem',
+        fontWeight: 700,
+        color: 'white'
+      }}>
+        Current Score: ${startingScore.toLocaleString()}
+      </div>
+    )}
   )
 }
