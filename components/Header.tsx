@@ -59,6 +59,7 @@ export default function Header() {
   }
 
   return (
+    <>
     <nav className="nav-bar">
       <div className="nav-left">
         <Link href="/" className="nav-logo">
@@ -128,5 +129,6 @@ export default function Header() {
         Current Score: ${startingScore.toLocaleString()}
       </div>
     )}
+    </>
   )
 }
