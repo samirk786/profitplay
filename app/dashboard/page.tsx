@@ -192,14 +192,10 @@ function BettingHistorySection({ challengeAccountId }: { challengeAccountId: str
 
   const getOutcomeText = (group: Bet[]) => {
     const firstBet = group[0]
-    const totalPnl = firstBet.pnl || 0
-
-    if (totalPnl > 0) {
-      return { text: `$${totalPnl.toFixed(0)} Won`, color: '#22C55E' }
-    } else if (totalPnl < 0) {
-      return { text: `$${Math.abs(totalPnl).toFixed(0)} Lost`, color: '#EF4444' }
+    return {
+      wager: `$${firstBet.stake.toFixed(2)} wager`,
+      potential: `$${firstBet.potentialPayout.toFixed(2)} potential`
     }
-    return { text: '$0 Push', color: '#9CA3AF' }
   }
 
   // Generate mock game stats for display
@@ -319,10 +315,17 @@ function BettingHistorySection({ challengeAccountId }: { challengeAccountId: str
                     <div style={{
                       fontSize: '1.5rem',
                       fontWeight: 700,
-                      color: outcome.color,
+                      color: 'white',
                       marginBottom: '0.25rem'
                     }}>
-                      {outcome.text}
+                      {outcome.wager}
+                    </div>
+                    <div style={{
+                      fontSize: '0.875rem',
+                      color: '#888888',
+                      marginBottom: '0.25rem'
+                    }}>
+                      {outcome.potential}
                     </div>
                     {firstBet.parlayMultiplier && (
                       <div style={{
