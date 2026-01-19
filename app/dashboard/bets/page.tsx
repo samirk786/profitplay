@@ -36,8 +36,6 @@ export default function BetsPage() {
   const [bets, setBets] = useState<Bet[]>([])
   const [loading, setLoading] = useState(true)
   const [challengeAccountId, setChallengeAccountId] = useState<string | null>(null)
-  const [filter, setFilter] = useState('ALL')
-  const [sportFilter, setSportFilter] = useState('ALL')
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -53,7 +51,7 @@ export default function BetsPage() {
     if (challengeAccountId) {
       fetchBets()
     }
-  }, [challengeAccountId, filter, sportFilter])
+  }, [challengeAccountId])
 
   const fetchChallengeAccount = async () => {
     if (!session?.user?.id) return
@@ -80,7 +78,7 @@ export default function BetsPage() {
 
     try {
       setLoading(true)
-      const url = `/api/bets?challengeAccountId=${challengeAccountId}${filter !== 'ALL' ? `&status=${filter}` : ''}`
+      const url = `/api/bets?challengeAccountId=${challengeAccountId}`
       const response = await fetch(url, {
         credentials: 'include'
       })
@@ -134,12 +132,6 @@ export default function BetsPage() {
   }, [bets])
 
   const betGroups = Object.values(groupedBets)
-    .filter(group => {
-      return sportFilter === 'ALL' || group.some(bet => bet.market.sport === sportFilter)
-    })
-    .filter(group => {
-      return filter === 'ALL' || group[0]?.status === filter
-    })
     .sort((a, b) => new Date(b[0].placedAt).getTime() - new Date(a[0].placedAt).getTime())
 
   // Extract player info from market metadata
@@ -273,15 +265,9 @@ export default function BetsPage() {
 
   const getOutcomeText = (group: Bet[]) => {
     const firstBet = group[0]
-    const totalPnl = firstBet.pnl || 0
-    const stake = firstBet.stake
-
-    if (totalPnl > 0) {
-      return { text: `$${totalPnl.toFixed(0)} Won`, color: '#22C55E' }
-    } else if (totalPnl < 0) {
-      return { text: `$${Math.abs(totalPnl).toFixed(0)} Lost`, color: '#EF4444' }
-    } else {
-      return { text: '$0 Push', color: '#9CA3AF' }
+    return {
+      wager: `$${firstBet.stake.toFixed(2)} wager`,
+      potential: `$${firstBet.potentialPayout.toFixed(2)} potential`
     }
   }
 
@@ -332,53 +318,6 @@ export default function BetsPage() {
         padding: '1rem',
         minHeight: 'calc(100vh - 80px)'
       }}>
-        {/* Filters */}
-        <div style={{
-          display: 'flex',
-          gap: '1rem',
-          marginBottom: '1.5rem',
-          flexWrap: 'wrap'
-        }}>
-              <select
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-            style={{
-              padding: '0.5rem 1rem',
-              backgroundColor: '#1E1E1E',
-              border: '1px solid #FFFFFF',
-              borderRadius: '8px',
-              color: 'white',
-              fontSize: '0.875rem',
-              cursor: 'pointer'
-            }}
-              >
-                <option value="ALL">All Statuses</option>
-                <option value="OPEN">Open</option>
-                <option value="WON">Won</option>
-                <option value="LOST">Lost</option>
-                <option value="PUSH">Push</option>
-              </select>
-              <select
-                value={sportFilter}
-                onChange={(e) => setSportFilter(e.target.value)}
-            style={{
-              padding: '0.5rem 1rem',
-              backgroundColor: '#1E1E1E',
-              border: '1px solid #FFFFFF',
-              borderRadius: '8px',
-              color: 'white',
-              fontSize: '0.875rem',
-              cursor: 'pointer'
-            }}
-              >
-                <option value="ALL">All Sports</option>
-                <option value="NBA">NBA</option>
-                <option value="NFL">NFL</option>
-                <option value="MLB">MLB</option>
-            <option value="NHL">NHL</option>
-              </select>
-        </div>
-
         {/* Betting History */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {betGroups.length === 0 ? (
@@ -422,10 +361,17 @@ export default function BetsPage() {
                       <div style={{
                         fontSize: '1.5rem',
                         fontWeight: 700,
-                        color: outcome.color,
+                        color: 'white',
                         marginBottom: '0.25rem'
                       }}>
-                        {outcome.text}
+                        {outcome.wager}
+                      </div>
+                      <div style={{
+                        fontSize: '0.875rem',
+                        color: '#888888',
+                        marginBottom: '0.25rem'
+                      }}>
+                        {outcome.potential}
                       </div>
                       {firstBet.parlayMultiplier && (
                         <div style={{
@@ -519,7 +465,7 @@ export default function BetsPage() {
                                   color: 'white',
                                   marginBottom: '0.25rem'
                                 }}>
-                                  {playerInfo.name.split(' ').map((n: string) => n[0]).join('. ')}
+                                  {playerInfo.name}
                                 </div>
                                 {isParlay && idx === 1 && (
                                   <div style={{
