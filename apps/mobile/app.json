@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "ProfitPlay",
+    "slug": "profitplay",
+    "scheme": "profitplay",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "../../public/profitplaylogo.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "../../public/profitplaylogo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0f172a"
+    },
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "extra": {
+      "apiBaseUrl": "${EXPO_PUBLIC_API_BASE_URL}",
+      "stripePublishableKey": "${EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY}"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "../../public/profitplaylogo.png",
+        "backgroundColor": "#0f172a"
+      }
+    }
+  }
+}

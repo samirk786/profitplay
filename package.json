@@ -2,6 +2,10 @@
   "name": "profitplay",
   "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -12,6 +16,9 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "mobile:dev": "npm run -w apps/mobile start",
+    "mobile:android": "npm run -w apps/mobile android",
+    "mobile:ios": "npm run -w apps/mobile ios",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:push:force": "prisma db push --force-reset",

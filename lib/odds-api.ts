@@ -32,6 +32,20 @@ interface ProcessedMarket {
   }>
 }
 
+interface OddsApiScoreResponse {
+  id: string
+  sport_key: string
+  sport_title: string
+  commence_time: string
+  completed: boolean
+  home_team: string
+  away_team: string
+  scores: Array<{
+    name: string
+    score: string
+  }> | null
+}
+
 export class OddsApiService {
   private apiKey: string
   private baseUrl = 'https://api.the-odds-api.com/v4'
@@ -67,6 +81,29 @@ export class OddsApiService {
       return this.processOddsData(data)
     } catch (error) {
       console.error('Error fetching odds:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Fetch final scores/results for a sport.
+   */
+  async fetchScores(sport: string, daysFrom = 3): Promise<OddsApiScoreResponse[]> {
+    try {
+      const params = new URLSearchParams({
+        apiKey: this.apiKey,
+        daysFrom: String(daysFrom),
+        dateFormat: 'iso'
+      })
+      const response = await fetch(`${this.baseUrl}/sports/${sport}/scores/?${params}`)
+
+      if (!response.ok) {
+        throw new Error(`Scores API error: ${response.status} ${response.statusText}`)
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Error fetching scores:', error)
       throw error
     }
   }

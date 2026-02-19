@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { oddsApiService } from '@/lib/odds-api'
+import { mapInternalSportToOddsApiKey } from '@/lib/odds-api-mapping'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,7 +28,10 @@ export async function GET(request: NextRequest) {
     // If refresh is requested, fetch fresh odds data first
     if (refresh && sport && sport !== 'ALL') {
       try {
-        const sportKey = mapSportToOddsApiKey(sport)
+        const sportKey = mapInternalSportToOddsApiKey(sport)
+        if (!sportKey) {
+          throw new Error(`Unsupported sport: ${sport}`)
+        }
         await oddsApiService.fetchOdds(sportKey)
         
         // Also fetch player props for NFL
@@ -115,7 +119,10 @@ export async function GET(request: NextRequest) {
         
         if (needsRefresh && sport && sport !== 'ALL') {
           try {
-            const sportKey = mapSportToOddsApiKey(sport)
+            const sportKey = mapInternalSportToOddsApiKey(sport)
+            if (!sportKey) {
+              throw new Error(`Unsupported sport: ${sport}`)
+            }
             console.log(`🔄 Fetching live player props from API for ${sport} - ${marketType}`)
             
             // Fetch player props from Odds API (if supported)
@@ -274,17 +281,6 @@ export async function GET(request: NextRequest) {
 }
 
 // Helper function to map our sport names to Odds API keys
-function mapSportToOddsApiKey(sport: string): string {
-  const mapping: Record<string, string> = {
-    'NBA': 'basketball_nba',
-    'NFL': 'americanfootball_nfl',
-    'MLB': 'baseball_mlb',
-    'NHL': 'icehockey_nhl',
-    'SOCCER': 'soccer_epl'
-  }
-  return mapping[sport] || 'basketball_nba'
-}
-
 // Helper function to sync player props from API to database
 async function syncPlayerPropsToDatabase(processedMarkets: any[], requestedMarketType?: string) {
   try {
@@ -368,7 +364,12 @@ async function syncMockPlayerPropsToDatabase(mockMarkets: any[], sport: string, 
           league: market.league,
           participants: market.participants,
           startTime: market.startTime,
-          status: 'UPCOMING'
+          status: 'UPCOMING',
+          _metadata: {
+            ...(market._metadata || {}),
+            propType: propTypeLabel,
+            originalMarketType: marketType
+          }
         },
         create: {
           id: stableId,
@@ -378,7 +379,12 @@ async function syncMockPlayerPropsToDatabase(mockMarkets: any[], sport: string, 
           marketType: dbMarketType as any,
           participants: market.participants,
           startTime: market.startTime,
-          status: 'UPCOMING'
+          status: 'UPCOMING',
+          _metadata: {
+            ...(market._metadata || {}),
+            propType: propTypeLabel,
+            originalMarketType: marketType
+          }
         }
       })
 
@@ -397,27 +403,9 @@ async function syncMockPlayerPropsToDatabase(mockMarkets: any[], sport: string, 
           data: {
             marketId: dbMarket.id,
             bookmaker: 'MOCK',
-            lineJSON: {
-              ...(market.oddsSnapshots[0].lineJSON || {}),
-              propType: propTypeLabel,
-              originalMarketType: marketType
-            }
+            lineJSON: market.oddsSnapshots[0].lineJSON
           }
         })
-      } else if (recentSnapshot) {
-        const lineJSON = recentSnapshot.lineJSON as any
-        if (!lineJSON?.propType || !lineJSON?.originalMarketType) {
-          await prisma.oddsSnapshot.update({
-            where: { id: recentSnapshot.id },
-            data: {
-              lineJSON: {
-                ...(lineJSON || {}),
-                propType: lineJSON?.propType || propTypeLabel,
-                originalMarketType: lineJSON?.originalMarketType || marketType
-              }
-            }
-          })
-        }
       }
 
       // Update the market ID in the returned data to use the stable ID
