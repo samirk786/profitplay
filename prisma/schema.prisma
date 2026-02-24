@@ -133,6 +133,7 @@ model Market {
   eventId      String
   marketType   MarketType
   participants String[] // JSON array of team/player names
+  metadata     Json? // Player name, team, jersey, matchup for player props
   status       MarketStatus @default(UPCOMING)
   startTime    DateTime
   createdAt    DateTime     @default(now())
@@ -142,6 +143,20 @@ model Market {
   bets          Bet[]
 
   @@map("markets")
+}
+
+model ActiveEvent {
+  id           String   @id @default(cuid())
+  eventId      String   @unique // The Odds API event ID
+  sport        String
+  homeTeam     String
+  awayTeam     String
+  commenceTime DateTime
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("active_events")
 }
 
 model OddsSnapshot {
@@ -273,6 +288,7 @@ enum MarketType {
   SPREAD
   TOTAL
   PROPS
+  // NFL
   PLAYER_PASS_TDS
   PLAYER_PASS_YDS
   PLAYER_PASS_COMPLETIONS
@@ -281,6 +297,10 @@ enum MarketType {
   PLAYER_REC_YDS
   PLAYER_REC_RECEPTIONS
   PLAYER_REC_TDS
+  // NBA
+  PLAYER_POINTS
+  PLAYER_REBOUNDS
+  PLAYER_ASSISTS
 }
 
 enum MarketStatus {

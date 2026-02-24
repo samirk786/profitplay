@@ -12,6 +12,7 @@ interface OddsApiResponse {
       key: string
       outcomes: Array<{
         name: string
+        description?: string // Player name for player props
         price: number
         point?: number
       }>
@@ -19,7 +20,16 @@ interface OddsApiResponse {
   }>
 }
 
-interface ProcessedMarket {
+interface OddsApiEvent {
+  id: string
+  sport_key: string
+  sport_title: string
+  commence_time: string
+  home_team: string
+  away_team: string
+}
+
+export interface ProcessedMarket {
   eventId: string
   sport: string
   league: string
@@ -30,6 +40,13 @@ interface ProcessedMarket {
     bookmaker: string
     odds: any
   }>
+  metadata?: {
+    player?: string
+    homeTeam?: string
+    awayTeam?: string
+    matchup?: string
+    apiEventId?: string
+  }
 }
 
 interface OddsApiScoreResponse {
@@ -58,21 +75,45 @@ export class OddsApiService {
   }
 
   /**
-   * Fetch odds for a specific sport
+   * Fetch upcoming events for a sport (FREE - 0 credits)
+   */
+  async fetchEvents(sport: string): Promise<OddsApiEvent[]> {
+    try {
+      const params = new URLSearchParams({
+        apiKey: this.apiKey,
+        dateFormat: 'iso'
+      })
+
+      const response = await fetch(`${this.baseUrl}/sports/${sport}/events?${params}`)
+
+      if (!response.ok) {
+        throw new Error(`Events API error: ${response.status} ${response.statusText}`)
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Error fetching events:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Fetch odds for a specific sport using the BULK endpoint.
+   * Works for featured markets: h2h, spreads, totals.
+   * Costs 1 credit per region per market.
    */
   async fetchOdds(sport: string, markets: string[] = ['h2h', 'spreads', 'totals']): Promise<ProcessedMarket[]> {
     try {
       const params = new URLSearchParams({
         apiKey: this.apiKey,
-        sport,
-        markets: markets.join(','),
         regions: 'us',
+        markets: markets.join(','),
         oddsFormat: 'american',
         dateFormat: 'iso'
       })
 
       const response = await fetch(`${this.baseUrl}/sports/${sport}/odds/?${params}`)
-      
+
       if (!response.ok) {
         throw new Error(`Odds API error: ${response.status} ${response.statusText}`)
       }
@@ -82,6 +123,52 @@ export class OddsApiService {
     } catch (error) {
       console.error('Error fetching odds:', error)
       throw error
+    }
+  }
+
+  /**
+   * Fetch player props for a SINGLE event using the per-event endpoint.
+   * Player props are "non-featured" markets and MUST be fetched per-event.
+   * Costs 1 credit per market (not per player - all players in one call).
+   *
+   * Example: fetching player_points for 1 event = 1 credit, returns all players' points props.
+   */
+  async fetchPlayerPropsForEvent(
+    sport: string,
+    eventId: string,
+    markets: string[] = ['player_points', 'player_rebounds', 'player_assists']
+  ): Promise<ProcessedMarket[]> {
+    try {
+      const params = new URLSearchParams({
+        apiKey: this.apiKey,
+        regions: 'us',
+        markets: markets.join(','),
+        oddsFormat: 'american',
+        dateFormat: 'iso'
+      })
+
+      console.log(`Fetching player props for event ${eventId}: ${markets.join(', ')}`)
+
+      const response = await fetch(
+        `${this.baseUrl}/sports/${sport}/events/${eventId}/odds?${params}`
+      )
+
+      if (!response.ok) {
+        console.warn(`Player props not available for event ${eventId}: ${response.status} ${response.statusText}`)
+        return []
+      }
+
+      const data: OddsApiResponse = await response.json()
+
+      if (!data || !data.bookmakers || data.bookmakers.length === 0) {
+        console.log(`No player props data returned for event ${eventId}`)
+        return []
+      }
+
+      return this.processPerEventPlayerProps(data)
+    } catch (error) {
+      console.error(`Error fetching player props for event ${eventId}:`, error)
+      return []
     }
   }
 
@@ -109,150 +196,12 @@ export class OddsApiService {
   }
 
   /**
-   * Fetch player props for a specific sport
-   * NOTE: The Odds API (the-odds-api.com) may not support player props directly.
-   * This function attempts to fetch them, but will return empty array if not supported.
-   * For production, you may need to integrate with a different API provider that
-   * specializes in player props (e.g., OddsJam, MetaBet, Wager API).
-   * 
-   * If the API doesn't support player props, the route will fall back to mock data
-   * for demonstration purposes.
-   */
-  async fetchPlayerProps(sport: string): Promise<ProcessedMarket[]> {
-    try {
-      // Define player props market types based on sport
-      // NOTE: These market names may need to be adjusted based on actual Odds API support
-      // The Odds API may use different naming conventions or may not support all of these
-      const playerPropsMarkets: Record<string, string[]> = {
-        'americanfootball_nfl': [
-          'player_pass_tds',
-          'player_pass_yds',
-          'player_pass_completions',
-          'player_rush_yds',
-          'player_rush_att',
-          'player_rec_yds',
-          'player_rec_receptions',
-          'player_rec_tds'
-        ],
-        'basketball_nba': [
-          'player_points',
-          'player_rebounds',
-          'player_assists',
-          'player_threes',
-          'player_steals',
-          'player_blocks'
-        ],
-        'baseball_mlb': [
-          'player_hits',
-          'player_home_runs',
-          'player_strikeouts',
-          'player_total_bases'
-        ],
-        'icehockey_nhl': [
-          'player_points',
-          'player_goals',
-          'player_assists',
-          'player_shots_on_goal'
-        ]
-      }
-
-      const marketsToFetch = playerPropsMarkets[sport] || []
-      
-      if (marketsToFetch.length === 0) {
-        console.log(`No player props markets defined for sport: ${sport}`)
-        return []
-      }
-
-      console.log(`Fetching player props for ${sport} with markets: ${marketsToFetch.join(', ')}`)
-
-      // Fetch player props from the Odds API
-      const params = new URLSearchParams({
-        apiKey: this.apiKey,
-        sport,
-        markets: marketsToFetch.join(','),
-        regions: 'us',
-        oddsFormat: 'american',
-        dateFormat: 'iso'
-      })
-
-      const response = await fetch(`${this.baseUrl}/sports/${sport}/odds/?${params}`)
-      
-      if (!response.ok) {
-        // If player props aren't available, return empty array (we'll fall back to mocks in the route)
-        console.warn(`Player props not available for ${sport}: ${response.status} ${response.statusText}`)
-        return []
-      }
-
-      const data: OddsApiResponse[] = await response.json()
-      
-      if (!data || data.length === 0) {
-        console.log(`No player props data returned for ${sport}`)
-        return []
-      }
-
-      // Process player props data - need to extract player name from event/outcome names
-      const processedMarkets: ProcessedMarket[] = []
-      
-      for (const event of data) {
-        // Player props are structured differently - each event represents a player prop
-        // The event structure may have player names in the home_team/away_team or outcomes
-        for (const bookmaker of event.bookmakers) {
-          for (const market of bookmaker.markets) {
-            // Extract player name from outcomes or event name
-            // Player props typically have outcomes like "Over 275.5" or "Under 275.5"
-            // The player name might be in the event title or outcome name
-            const playerName = event.home_team || event.away_team || 'Player'
-            const teamName = event.home_team && event.away_team 
-              ? (event.home_team.includes(playerName) ? event.away_team : event.home_team)
-              : event.home_team || event.away_team || 'Team'
-
-            const marketType = this.mapPlayerPropsMarketType(market.key)
-            const odds = this.processPlayerPropsOutcomes(market.outcomes, market.key)
-
-            // Find existing processed market for this player and market type
-            let processedMarket = processedMarkets.find(
-              pm => pm.eventId === `${event.id}-${playerName}-${marketType}` &&
-                    pm.markets.some(m => m.marketType === marketType)
-            )
-
-            if (!processedMarket) {
-              processedMarket = {
-                eventId: `${event.id}-${playerName}-${marketType}`,
-                sport: this.mapSportName(event.sport_title),
-                league: event.sport_title,
-                participants: [playerName, teamName],
-                startTime: new Date(event.commence_time),
-                markets: []
-              }
-              processedMarkets.push(processedMarket)
-            }
-
-            // Add market to the processed market
-            processedMarket.markets.push({
-              marketType,
-              bookmaker: bookmaker.title,
-              odds
-            })
-          }
-        }
-      }
-
-      console.log(`Processed ${processedMarkets.length} player props events for ${sport}`)
-      return processedMarkets
-    } catch (error) {
-      console.error('Error fetching player props:', error)
-      // Return empty array on error - the route will fall back to mock data
-      return []
-    }
-  }
-
-  /**
    * Fetch available sports
    */
   async fetchSports(): Promise<Array<{ key: string; title: string; active: boolean }>> {
     try {
       const response = await fetch(`${this.baseUrl}/sports/?apiKey=${this.apiKey}`)
-      
+
       if (!response.ok) {
         throw new Error(`Sports API error: ${response.status} ${response.statusText}`)
       }
@@ -265,43 +214,95 @@ export class OddsApiService {
   }
 
   /**
-   * Process player props data into our market format
+   * Process per-event player props response.
+   * The per-event endpoint returns a single event object with bookmakers.
+   * Each market's outcomes contain individual player lines where:
+   * - outcome.description = player name (e.g., "LeBron James")
+   * - outcome.name = "Over" or "Under"
+   * - outcome.point = the line (e.g., 25.5)
+   * - outcome.price = the odds (e.g., -110)
    */
-  private processPlayerPropsData(data: OddsApiResponse[]): ProcessedMarket[] {
-    return data.map(event => {
-      const participants = [event.away_team, event.home_team]
-      const startTime = new Date(event.commence_time)
-      
-      // Process each bookmaker's markets
-      const markets = event.bookmakers.flatMap(bookmaker => 
-        bookmaker.markets.map(market => ({
-          marketType: this.mapPlayerPropsMarketType(market.key),
-          bookmaker: bookmaker.title,
-          odds: this.processPlayerPropsOutcomes(market.outcomes, market.key)
-        }))
-      )
+  private processPerEventPlayerProps(event: OddsApiResponse): ProcessedMarket[] {
+    const processedMarkets: ProcessedMarket[] = []
+    const matchup = `${event.away_team} @ ${event.home_team}`
 
-      return {
-        eventId: event.id,
-        sport: this.mapSportName(event.sport_title),
-        league: event.sport_title,
-        participants,
-        startTime,
-        markets
+    // Use the first bookmaker only (to avoid duplicates)
+    const bookmaker = event.bookmakers[0]
+    if (!bookmaker) return []
+
+    for (const market of bookmaker.markets) {
+      const marketType = this.mapPlayerPropsMarketType(market.key)
+
+      // Group outcomes by player (using description field)
+      const playerGroups: Record<string, Array<{
+        name: string
+        description?: string
+        price: number
+        point?: number
+      }>> = {}
+
+      for (const outcome of market.outcomes) {
+        const playerName = outcome.description || 'Unknown Player'
+        if (!playerGroups[playerName]) {
+          playerGroups[playerName] = []
+        }
+        playerGroups[playerName].push(outcome)
       }
-    })
+
+      // Create a ProcessedMarket for each player
+      for (const [playerName, outcomes] of Object.entries(playerGroups)) {
+        const overOutcome = outcomes.find(o => o.name === 'Over')
+        const underOutcome = outcomes.find(o => o.name === 'Under')
+
+        if (!overOutcome && !underOutcome) continue
+
+        const processedId = `${event.id}-${playerName.replace(/\s+/g, '_')}-${marketType}`
+
+        processedMarkets.push({
+          eventId: processedId,
+          sport: this.mapSportName(event.sport_title),
+          league: event.sport_title,
+          participants: [playerName, matchup],
+          startTime: new Date(event.commence_time),
+          markets: [{
+            marketType,
+            bookmaker: bookmaker.title,
+            odds: {
+              over: {
+                total: this.preserveDecimal(overOutcome?.point || 0),
+                odds: this.roundOdds(overOutcome?.price || -110)
+              },
+              under: {
+                total: this.preserveDecimal(underOutcome?.point || 0),
+                odds: this.roundOdds(underOutcome?.price || -110)
+              }
+            }
+          }],
+          metadata: {
+            player: playerName,
+            homeTeam: event.home_team,
+            awayTeam: event.away_team,
+            matchup,
+            apiEventId: event.id
+          }
+        })
+      }
+    }
+
+    console.log(`Processed ${processedMarkets.length} player props for event ${event.id}`)
+    return processedMarkets
   }
 
   /**
-   * Process raw odds data into our market format
+   * Process raw odds data into our market format (for bulk endpoint)
    */
   private processOddsData(data: OddsApiResponse[]): ProcessedMarket[] {
     return data.map(event => {
       const participants = [event.away_team, event.home_team]
       const startTime = new Date(event.commence_time)
-      
+
       // Process each bookmaker's markets
-      const markets = event.bookmakers.flatMap(bookmaker => 
+      const markets = event.bookmakers.flatMap(bookmaker =>
         bookmaker.markets.map(market => ({
           marketType: this.mapMarketType(market.key),
           bookmaker: bookmaker.title,
@@ -315,7 +316,13 @@ export class OddsApiService {
         league: event.sport_title,
         participants,
         startTime,
-        markets
+        markets,
+        metadata: {
+          homeTeam: event.home_team,
+          awayTeam: event.away_team,
+          matchup: `${event.away_team} @ ${event.home_team}`,
+          apiEventId: event.id
+        }
       }
     })
   }
@@ -328,7 +335,7 @@ export class OddsApiService {
       'h2h': 'MONEYLINE',
       'spreads': 'SPREAD',
       'totals': 'TOTAL',
-      'btts': 'PROPS' // Both Teams To Score
+      'btts': 'PROPS'
     }
     return mapping[apiMarketType] || 'PROPS'
   }
@@ -380,7 +387,7 @@ export class OddsApiService {
   }
 
   /**
-   * Process market outcomes into our odds format
+   * Process market outcomes into our odds format (for bulk endpoint)
    */
   private processMarketOutcomes(outcomes: any[], marketType: string): any {
     if (marketType === 'h2h') {
@@ -400,92 +407,50 @@ export class OddsApiService {
         }
       }
     } else if (marketType === 'totals') {
-            return {
-              over: {
-                total: this.preserveDecimal(outcomes.find(o => o.name.includes('Over'))?.point || 0),
-                odds: this.roundOdds(outcomes.find(o => o.name.includes('Over'))?.price || 0)
-              },
-              under: {
-                total: this.preserveDecimal(outcomes.find(o => o.name.includes('Under'))?.point || 0),
-                odds: this.roundOdds(outcomes.find(o => o.name.includes('Under'))?.price || 0)
-              }
-            }
+      return {
+        over: {
+          total: this.preserveDecimal(outcomes.find(o => o.name.includes('Over'))?.point || 0),
+          odds: this.roundOdds(outcomes.find(o => o.name.includes('Over'))?.price || 0)
+        },
+        under: {
+          total: this.preserveDecimal(outcomes.find(o => o.name.includes('Under'))?.point || 0),
+          odds: this.roundOdds(outcomes.find(o => o.name.includes('Under'))?.price || 0)
+        }
+      }
     }
     return outcomes
   }
 
-  /**
-   * Process player props market outcomes into our odds format
-   */
-  private processPlayerPropsOutcomes(outcomes: any[], marketType: string): any {
-    // Player props typically have over/under format
-    const overOutcome = outcomes.find(o => o.name.includes('Over') || o.name.includes('o'))
-    const underOutcome = outcomes.find(o => o.name.includes('Under') || o.name.includes('u'))
-    
-    if (overOutcome && underOutcome) {
-            return {
-              over: {
-                total: this.preserveDecimal(overOutcome.point || 0),
-                odds: this.roundOdds(overOutcome.price || 0)
-              },
-              under: {
-                total: this.preserveDecimal(underOutcome.point || 0),
-                odds: this.roundOdds(underOutcome.price || 0)
-              }
-            }
-    }
-    
-    return outcomes
-  }
-
-  /**
-   * Round odds to 2 decimal places for better display
-   */
   private roundOdds(odds: number): number {
     return Math.round(odds * 100) / 100
   }
 
-  /**
-   * Round spreads/totals to 1 decimal place for better display
-   */
   private roundSpread(spread: number): number {
-    // Handle NaN values
-    if (isNaN(spread) || !isFinite(spread)) {
-      return 0
-    }
+    if (isNaN(spread) || !isFinite(spread)) return 0
     return Math.round(spread * 10) / 10
   }
 
-  /**
-   * Preserve decimal values for totals and player props
-   */
   private preserveDecimal(value: number): number {
-    // Handle NaN values
-    if (isNaN(value) || !isFinite(value)) {
-      return 0
-    }
-    // Keep original value with decimals (don't round)
+    if (isNaN(value) || !isFinite(value)) return 0
     return value
   }
 
   /**
-   * Check API usage and limits
+   * Check API usage via response headers.
+   * The Odds API returns x-requests-used and x-requests-remaining headers.
    */
   async checkUsage(): Promise<{ used: number; remaining: number }> {
     try {
-      // The Odds API doesn't have a separate usage endpoint
-      // We'll simulate this by making a simple request and checking headers
       const response = await fetch(`${this.baseUrl}/sports/?apiKey=${this.apiKey}`)
-      
+
       if (!response.ok) {
         throw new Error(`Usage API error: ${response.status} ${response.statusText}`)
       }
 
-      // For now, we'll return a mock response since the API doesn't provide usage info
-      return {
-        used: 1, // This will be incremented each time we make a request
-        remaining: 499 // This is approximate for free tier
-      }
+      const used = parseInt(response.headers.get('x-requests-used') || '0', 10)
+      const remaining = parseInt(response.headers.get('x-requests-remaining') || '500', 10)
+
+      return { used, remaining }
     } catch (error) {
       console.error('Error checking API usage:', error)
       throw error

@@ -157,26 +157,50 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Settlement Management */}
-        <div className="bg-white p-6 rounded-lg shadow mb-8">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Settlement Management
-          </h3>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600">
-                {stats?.pendingSettlements} bets awaiting settlement
-              </p>
-              <p className="text-sm text-gray-500">
-                Review and settle pending bets
-              </p>
+        {/* Game & Settlement Management */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          <div className="bg-white p-6 rounded-lg shadow">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Game Management
+            </h3>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-600">
+                  Select which NBA games to display
+                </p>
+                <p className="text-sm text-gray-500">
+                  Pick up to 2 games for the homepage
+                </p>
+              </div>
+              <Link
+                href="/admin/games"
+                className="bg-green-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-700"
+              >
+                Manage Games
+              </Link>
             </div>
-            <Link
-              href="/admin/settlements"
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700"
-            >
-              Manage Settlements
-            </Link>
+          </div>
+
+          <div className="bg-white p-6 rounded-lg shadow">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Settlement Management
+            </h3>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-600">
+                  {stats?.pendingSettlements} bets awaiting settlement
+                </p>
+                <p className="text-sm text-gray-500">
+                  Review and settle pending bets
+                </p>
+              </div>
+              <Link
+                href="/admin/settlements"
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700"
+              >
+                Manage Settlements
+              </Link>
+            </div>
           </div>
         </div>
 
