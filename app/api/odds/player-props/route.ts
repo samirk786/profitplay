@@ -1,69 +1,74 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { oddsApiService } from '@/lib/odds-api'
 
+/**
+ * POST: Sync player props for a specific sport and event.
+ * Uses the per-event endpoint (1 credit per market per event).
+ */
 export async function POST(request: NextRequest) {
   try {
-    const { sport } = await request.json()
-    
-    if (!sport) {
-      return NextResponse.json({ error: 'Sport is required' }, { status: 400 })
+    const { sport, eventId, markets } = await request.json()
+
+    if (!sport || !eventId) {
+      return NextResponse.json(
+        { error: 'sport and eventId are required' },
+        { status: 400 }
+      )
     }
 
-    console.log(`🏈 Syncing player props for sport: ${sport}`)
-    const playerPropsData = await oddsApiService.fetchPlayerProps(sport)
-    console.log(`📊 Fetched ${playerPropsData.length} player props events`)
+    const marketKeys = markets || ['player_points', 'player_rebounds', 'player_assists']
 
-    // Check API usage after successful sync
+    console.log(`Syncing player props for event ${eventId}: ${marketKeys.join(', ')}`)
+    const playerPropsData = await oddsApiService.fetchPlayerPropsForEvent(sport, eventId, marketKeys)
+    console.log(`Fetched ${playerPropsData.length} player props`)
+
     const apiUsage = await oddsApiService.checkUsage()
 
     return NextResponse.json({
       success: true,
-      message: 'Player props data synced successfully',
+      message: 'Player props data fetched successfully',
       stats: {
-        playerPropsEvents: playerPropsData.length,
+        playerPropsCount: playerPropsData.length,
         apiUsage
-      }
+      },
+      data: playerPropsData
     })
   } catch (error: any) {
     console.error('Player props sync error:', error)
     return NextResponse.json(
-      { 
-        error: 'Failed to sync player props data', 
-        details: error.message 
+      {
+        error: 'Failed to fetch player props data',
+        details: error.message
       },
       { status: 500 }
     )
   }
 }
 
-export async function GET(request: NextRequest) {
+/**
+ * GET: Test player props API connectivity.
+ * Fetches events list (free) to verify the API key works.
+ */
+export async function GET() {
   try {
-    // Test player props for NFL
-    const playerPropsData = await oddsApiService.fetchPlayerProps('americanfootball_nfl')
+    const events = await oddsApiService.fetchEvents('basketball_nba')
     const apiUsage = await oddsApiService.checkUsage()
 
     return NextResponse.json({
       success: true,
       message: 'Player props API is working!',
       stats: {
-        playerPropsEvents: playerPropsData.length,
+        upcomingEvents: events.length,
         apiUsage
       },
-      sampleData: playerPropsData.slice(0, 3).map(event => ({
-        eventId: event.eventId,
-        sport: event.sport,
-        participants: event.participants,
-        marketsCount: event.markets.length,
-        sampleMarkets: event.markets.slice(0, 2)
-      }))
+      events: events.slice(0, 5) // Show first 5 events
     })
   } catch (error: any) {
     console.error('Player props test error:', error)
     return NextResponse.json(
-      { 
-        success: false, 
-        message: 'Player props API test failed', 
-        details: error.message 
+      {
+        error: 'Player props API test failed',
+        details: error.message
       },
       { status: 500 }
     )

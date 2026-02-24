@@ -16,45 +16,15 @@ const getShortName = (name: string) => {
   return `${firstInitial}. ${lastName}`
 }
 
-// Sport and Category Options
-const SPORT_OPTIONS = ["NBA", "NFL", "MLB", "NHL"]
-
-const CATEGORY_OPTIONS = {
-  NBA: ["Points", "Assists", "Rebounds", "3PT Made", "Pts+Rebs+Asts"],
-  NFL: ["Passing Yards", "Rushing Yards", "Receiving Yards", "Receptions"],
-  MLB: ["Hits", "Home Runs", "Strikeouts", "RBIs"],
-  NHL: ["Goals", "Assists", "Shots on Goal", "Saves"],
-}
+// NBA-only categories for beta
+const CATEGORY_OPTIONS = ["Spread", "Points", "Assists", "Rebounds"]
 
 // Map category to market type
-// Note: The API accepts these market types in mock data, but the database schema
-// may only have NFL player props. The API will return mock data for NBA/MLB/NHL props.
-const CATEGORY_TO_MARKET_TYPE: Record<string, Record<string, string>> = {
-  NBA: {
-    "Points": "PLAYER_POINTS",
-    "Assists": "PLAYER_ASSISTS",
-    "Rebounds": "PLAYER_REBOUNDS",
-    "3PT Made": "PLAYER_THREES",
-    "Pts+Rebs+Asts": "PLAYER_POINTS" // Use points as fallback
-  },
-  NFL: {
-    "Passing Yards": "PLAYER_PASS_YDS",
-    "Rushing Yards": "PLAYER_RUSH_YDS",
-    "Receiving Yards": "PLAYER_REC_YDS",
-    "Receptions": "PLAYER_REC_RECEPTIONS"
-  },
-  MLB: {
-    "Hits": "PLAYER_HITS",
-    "Home Runs": "PLAYER_HOME_RUNS",
-    "Strikeouts": "PLAYER_STRIKEOUTS",
-    "RBIs": "PROPS" // Use PROPS as fallback since RBIs may not be in schema
-  },
-  NHL: {
-    "Goals": "PLAYER_GOALS",
-    "Assists": "PLAYER_ASSISTS",
-    "Shots on Goal": "PROPS", // Use PROPS as fallback
-    "Saves": "PROPS" // Use PROPS as fallback
-  }
+const CATEGORY_TO_MARKET_TYPE: Record<string, string> = {
+  "Spread": "SPREAD",
+  "Points": "PLAYER_POINTS",
+  "Assists": "PLAYER_ASSISTS",
+  "Rebounds": "PLAYER_REBOUNDS"
 }
 
 interface PlayerProp {
@@ -107,9 +77,9 @@ export default function Home() {
   const [propsError, setPropsError] = useState<string | null>(null)
   const [likedPicks, setLikedPicks] = useState<Record<string, PlayerProp>>({})
 
-  // State for sport and category filters
-  const [selectedSport, setSelectedSport] = useState("NBA")
-  const [selectedCategory, setSelectedCategory] = useState("Points")
+  // State for category filter (NBA only for beta)
+  const selectedSport = "NBA"
+  const [selectedCategory, setSelectedCategory] = useState("Spread")
   
   // State for matchup filter (empty array represents "All Games")
   const [selectedMatchups, setSelectedMatchups] = useState<string[]>([])
@@ -158,39 +128,84 @@ export default function Home() {
     }
   }
 
-  // Fetch player props from API
-  useEffect(() => {
-    async function loadProps() {
-      try {
-        setLoadingProps(true)
-        setPropsError(null)
-        
-        const marketType = CATEGORY_TO_MARKET_TYPE[selectedSport]?.[selectedCategory]
-        if (!marketType) {
-      setPlayerProps([])
-          setLoadingProps(false)
-      return
-    }
+  // State for refresh
+  const [refreshing, setRefreshing] = useState(false)
 
-    const params = new URLSearchParams({
-      sport: selectedSport,
-          marketType: marketType
-        })
-        
-        const response = await fetch(`/api/markets?${params}`)
-        const data = await response.json()
-        
-          if (data.markets) {
-          // Map API response to PlayerProp format
+  // Fetch player props from API
+  const loadProps = useCallback(async (forceRefresh = false) => {
+    try {
+      setLoadingProps(true)
+      setPropsError(null)
+
+      const marketType = CATEGORY_TO_MARKET_TYPE[selectedCategory]
+      if (!marketType) {
+        setPlayerProps([])
+        setLoadingProps(false)
+        return
+      }
+
+      const params = new URLSearchParams({
+        sport: selectedSport,
+        marketType: marketType
+      })
+
+      if (forceRefresh) {
+        params.set('refresh', 'true')
+      }
+
+      const response = await fetch(`/api/markets?${params}`)
+      const data = await response.json()
+
+      if (data.message && data.markets?.length === 0) {
+        setPropsError(data.message)
+        setPlayerProps([])
+        return
+      }
+
+      if (data.markets) {
+        if (marketType === 'SPREAD') {
+          // Map spread markets to PlayerProp format (team-level, not player-level)
+          const mappedProps: PlayerProp[] = data.markets.map((market: any) => {
+            const odds = market.odds
+            const metadata = market._metadata
+            const gameDateTime = market.startTime
+              ? new Date(market.startTime).toLocaleString('en-US', {
+                  month: "short",
+                  day: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                })
+              : null
+
+            return {
+              id: market.id,
+              playerName: `${market.participants[0]} vs ${market.participants[1]}`,
+              displayName: `${market.participants[0]} vs ${market.participants[1]}`,
+              line: odds?.home?.spread || 0,
+              category: 'Spread',
+              sport: market.sport,
+              jerseyNumber: null,
+              team: null,
+              matchup: metadata?.matchup || `${market.participants[0]} @ ${market.participants[1]}`,
+              gameDateTime: gameDateTime,
+              // Store extra spread data for rendering
+              _spreadData: {
+                home: { team: market.participants[1], spread: odds?.home?.spread, odds: odds?.home?.odds },
+                away: { team: market.participants[0], spread: odds?.away?.spread, odds: odds?.away?.odds }
+              }
+            }
+          })
+          setPlayerProps(mappedProps)
+        } else {
+          // Map player prop API response to PlayerProp format
           const mappedProps: PlayerProp[] = data.markets
-            .filter((market: any) => market._metadata) // Only player props have metadata
+            .filter((market: any) => market._metadata || market.marketType?.startsWith('PLAYER_'))
             .map((market: any) => {
               const metadata = market._metadata
               const odds = market.odds
               const line = odds?.over?.total || odds?.under?.total || 0
-              
-              // Format game date/time
-              const gameDateTime = market.startTime 
+
+              const gameDateTime = market.startTime
                 ? new Date(market.startTime).toLocaleString('en-US', {
                     month: "short",
                     day: "numeric",
@@ -198,36 +213,44 @@ export default function Home() {
                     minute: "2-digit",
                   })
                 : null
-              
+
               return {
                 id: market.id,
-                playerName: metadata.player || market.participants[0] || 'Unknown Player',
-                displayName: getShortName(metadata.player || market.participants[0] || 'Unknown Player'),
+                playerName: metadata?.player || market.participants[0] || 'Unknown Player',
+                displayName: getShortName(metadata?.player || market.participants[0] || 'Unknown Player'),
                 line: line,
                 category: selectedCategory,
                 sport: market.sport,
-                jerseyNumber: metadata.jersey ?? null,
-                team: metadata.team || market.participants?.[1] || null,
-                matchup: metadata.matchup || `${market.participants[0]} @ ${market.participants[1] || ''}`,
+                jerseyNumber: metadata?.jersey ?? null,
+                team: metadata?.team || market.participants?.[1] || null,
+                matchup: metadata?.matchup || `${market.participants[0]} @ ${market.participants[1] || ''}`,
                 gameDateTime: gameDateTime
               }
             })
-          
-          setPlayerProps(mappedProps)
-        } else {
-          setPlayerProps([])
-        }
-      } catch (err) {
-        console.error("Failed to load player points props", err)
-        setPropsError("Unable to load player props right now.")
-        setPlayerProps([])
-      } finally {
-        setLoadingProps(false)
-      }
-    }
 
-    loadProps()
+          setPlayerProps(mappedProps)
+        }
+      } else {
+        setPlayerProps([])
+      }
+    } catch (err) {
+      console.error("Failed to load props", err)
+      setPropsError("Unable to load props right now.")
+      setPlayerProps([])
+    } finally {
+      setLoadingProps(false)
+      setRefreshing(false)
+    }
   }, [selectedSport, selectedCategory])
+
+  useEffect(() => {
+    loadProps()
+  }, [loadProps])
+
+  const handleRefreshOdds = async () => {
+    setRefreshing(true)
+    await loadProps(true)
+  }
 
   useEffect(() => {
     try {
@@ -249,11 +272,11 @@ export default function Home() {
   }, [likedPicks])
 
   // Extract unique matchups from players filtered by sport and category
-  const availableMatchups = [...new Set(
+  const availableMatchups = Array.from(new Set(
     playerProps
       .map(prop => prop.matchup)
       .filter(Boolean) // Remove empty strings
-  )].sort() // Sort alphabetically for consistent display
+  )).sort() // Sort alphabetically for consistent display
 
   // Filter players based on selected sport, category, and matchup
   const visiblePlayers = playerProps.filter(player => {
@@ -459,17 +482,6 @@ export default function Home() {
     }
   }
 
-  // Handler for sport change
-  const handleSportChange = (sport: string) => {
-    setSelectedSport(sport)
-    // Reset category to first category of the new sport
-    const firstCategory = CATEGORY_OPTIONS[sport as keyof typeof CATEGORY_OPTIONS]?.[0]
-    if (firstCategory) {
-      setSelectedCategory(firstCategory)
-    }
-    setSelectedMatchups([]) // Reset matchup filter when sport changes
-  }
-
   // Handler for category change
   const handleCategoryChange = (category: string) => {
     setSelectedCategory(category)
@@ -489,22 +501,9 @@ export default function Home() {
       {/* Filter Bars */}
       {activeTab === "Board" && (
       <section className="filters-section">
-        {/* Sport Filter Bar */}
-        <div className="sport-bar">
-          {SPORT_OPTIONS.map((sport) => (
-            <button
-              key={sport}
-              className={`sport-pill ${selectedSport === sport ? 'sport-pill-selected' : ''}`}
-              onClick={() => handleSportChange(sport)}
-            >
-              {sport}
-            </button>
-          ))}
-        </div>
-
         {/* Category Filter Bar */}
         <div className="category-bar">
-          {CATEGORY_OPTIONS[selectedSport as keyof typeof CATEGORY_OPTIONS]?.map((category) => (
+          {CATEGORY_OPTIONS.map((category) => (
             <button
               key={category}
               className={`category-pill ${selectedCategory === category ? 'category-pill-selected' : ''}`}
@@ -513,6 +512,14 @@ export default function Home() {
               {category}
             </button>
           ))}
+          <button
+            className="category-pill"
+            style={{ marginLeft: 'auto', fontSize: '0.75rem', opacity: refreshing ? 0.5 : 1 }}
+            onClick={handleRefreshOdds}
+            disabled={refreshing}
+          >
+            {refreshing ? 'Refreshing...' : 'Refresh Odds'}
+          </button>
         </div>
 
         {/* Games Filter Button */}
@@ -647,12 +654,12 @@ export default function Home() {
         </section>
       )}
 
-      {/* Player Cards Section */}
+      {/* Player Cards / Spread Cards Section */}
       {activeTab === "Board" && (
       <section className="players-section">
         {loadingProps && playerProps.length === 0 ? (
           <div style={{ textAlign: 'center', color: '#FFFFFF', padding: '2rem' }}>
-            Loading player props…
+            Loading props...
           </div>
         ) : propsError ? (
           <div style={{ textAlign: 'center', color: '#FFFFFF', padding: '2rem' }}>
@@ -660,13 +667,80 @@ export default function Home() {
           </div>
         ) : visiblePlayers.length === 0 ? (
           <div className="no-props-message">
-            No Player Props Available.
+            No Props Available. Select games in Admin &gt; Manage Games, then click Refresh Odds.
           </div>
+        ) : selectedCategory === 'Spread' ? (
+          /* Spread cards - show game-level spread lines */
+          visiblePlayers.map((game: any) => {
+            const spreadData = game._spreadData
+            if (!spreadData) return null
+
+            const awayKey = getPropKey(game.sport, spreadData.away.team, 'Spread')
+            const homeKey = getPropKey(game.sport, spreadData.home.team, 'Spread')
+            const awaySelected = selectedPicks[awayKey]?.choice === 'over'
+            const homeSelected = selectedPicks[homeKey]?.choice === 'over'
+
+            return (
+              <div key={game.id} className="player-card" style={{ minWidth: '300px' }}>
+                <div className="player-card-body" style={{ padding: '1rem' }}>
+                  <div className="player-matchup-row" style={{ marginBottom: '0.75rem' }}>
+                    <span className="player-matchup">{game.matchup}</span>
+                    {game.gameDateTime && (
+                      <>
+                        <span className="matchup-divider">-</span>
+                        <span className="player-game-time">{game.gameDateTime}</span>
+                      </>
+                    )}
+                  </div>
+                  <div className="player-points-label" style={{ marginBottom: '0.75rem' }}>Spread</div>
+
+                  {/* Away team spread */}
+                  <button
+                    className={`choice-btn player-button ${awaySelected ? 'choice-btn-selected selected' : ''}`}
+                    style={{ width: '100%', marginBottom: '0.5rem', justifyContent: 'space-between', display: 'flex' }}
+                    onClick={() => {
+                      const fakeProp: PlayerProp = {
+                        ...game,
+                        playerName: spreadData.away.team,
+                        displayName: spreadData.away.team,
+                        line: spreadData.away.spread,
+                        category: 'Spread'
+                      }
+                      handleChoice(fakeProp, awaySelected ? 'Over' : 'Over')
+                    }}
+                  >
+                    <span>{spreadData.away.team}</span>
+                    <span>{spreadData.away.spread > 0 ? '+' : ''}{spreadData.away.spread} ({spreadData.away.odds > 0 ? '+' : ''}{spreadData.away.odds})</span>
+                  </button>
+
+                  {/* Home team spread */}
+                  <button
+                    className={`choice-btn player-button ${homeSelected ? 'choice-btn-selected selected' : ''}`}
+                    style={{ width: '100%', justifyContent: 'space-between', display: 'flex' }}
+                    onClick={() => {
+                      const fakeProp: PlayerProp = {
+                        ...game,
+                        playerName: spreadData.home.team,
+                        displayName: spreadData.home.team,
+                        line: spreadData.home.spread,
+                        category: 'Spread'
+                      }
+                      handleChoice(fakeProp, homeSelected ? 'Over' : 'Over')
+                    }}
+                  >
+                    <span>{spreadData.home.team}</span>
+                    <span>{spreadData.home.spread > 0 ? '+' : ''}{spreadData.home.spread} ({spreadData.home.odds > 0 ? '+' : ''}{spreadData.home.odds})</span>
+                  </button>
+                </div>
+              </div>
+            )
+          })
         ) : (
+          /* Player prop cards - Over/Under */
           visiblePlayers.map((player) => {
             const pickKey = getPropKey(player.sport, player.playerName, player.category)
             const selectedChoice = selectedPicks[pickKey]?.choice
-            
+
             return (
               <div key={player.id} className="player-card">
                 <div className="player-card-top" style={{ position: 'relative' }}>
@@ -696,13 +770,13 @@ export default function Home() {
                   </div>
                 </div>
                 <div className="player-actions">
-                  <button 
+                  <button
                     className={`choice-btn player-button over-button ${selectedChoice === 'over' ? 'choice-btn-selected selected' : ''}`}
                     onClick={() => handleChoice(player, 'Over')}
                   >
                     Over
                   </button>
-                  <button 
+                  <button
                     className={`choice-btn player-button under-button ${selectedChoice === 'under' ? 'choice-btn-selected selected' : ''}`}
                     onClick={() => handleChoice(player, 'Under')}
                   >

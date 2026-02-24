@@ -81,13 +81,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Calculate P&L
-    const pnl = calculatePnlFromBet({
-      stake: bet.stake,
-      potentialPayout: bet.potentialPayout,
-      status: result as 'WON' | 'LOST' | 'PUSH'
-    })
-
     // Update bet status
     const updatedBet = await prisma.bet.update({
       where: { id: betId },
@@ -97,6 +90,46 @@ export async function POST(request: NextRequest) {
       }
     })
 
+    // Calculate P&L - parlay-aware logic
+    let pnl = 0
+
+    if (bet.parlayId) {
+      // This bet is part of a parlay - check sibling legs
+      const siblingBets = await prisma.bet.findMany({
+        where: { parlayId: bet.parlayId }
+      })
+
+      const allSettled = siblingBets.every(b => b.status !== 'OPEN')
+      const anyLost = siblingBets.some(b => b.status === 'LOST')
+      const allWon = siblingBets.every(b => b.status === 'WON' || b.status === 'PUSH')
+
+      if (result === 'LOST') {
+        // First LOST leg in this parlay - deduct stake once
+        const previouslyLost = siblingBets.some(b => b.id !== betId && b.status === 'LOST')
+        if (!previouslyLost) {
+          pnl = -bet.stake // Deduct stake only once for the entire parlay
+        } else {
+          pnl = 0 // Stake already deducted by a previous LOST leg
+        }
+      } else if (result === 'WON' && allSettled && allWon) {
+        // Last leg settled and all legs won (or pushed) - award full parlay payout
+        // Only count WON legs for payout (PUSH legs reduce the parlay but don't lose)
+        pnl = bet.potentialPayout - bet.stake
+      } else if (result === 'PUSH') {
+        pnl = 0 // Push doesn't affect P&L
+      } else {
+        // WON but not all legs settled yet - no P&L change yet
+        pnl = 0
+      }
+    } else {
+      // Single bet (not a parlay) - standard P&L
+      pnl = calculatePnlFromBet({
+        stake: bet.stake,
+        potentialPayout: bet.potentialPayout,
+        status: result as 'WON' | 'LOST' | 'PUSH'
+      })
+    }
+
     // Create settlement record
     await prisma.settlement.create({
       data: {
@@ -104,7 +137,9 @@ export async function POST(request: NextRequest) {
         resultJSON: {
           result,
           pnl,
-          settledAt: new Date().toISOString()
+          settledAt: new Date().toISOString(),
+          isParlay: !!bet.parlayId,
+          parlayId: bet.parlayId
         },
         source: 'manual',
         ts: new Date()
