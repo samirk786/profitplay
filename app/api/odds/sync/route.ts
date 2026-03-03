@@ -1,95 +1,149 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { oddsApiService } from '@/lib/odds-api'
-import { MarketType } from '@prisma/client'
 
+export const dynamic = 'force-dynamic'
+
+/**
+ * POST: Sync odds for active events only (NBA beta).
+ * Uses the bulk endpoint for spreads (1 credit) and per-event endpoint for player props.
+ * Only syncs for admin-selected active games.
+ */
 export async function POST(request: NextRequest) {
   try {
-    const { sport = 'basketball_nba' } = await request.json()
+    // Get active events from the database
+    const activeEvents = await prisma.activeEvent.findMany({
+      where: { isActive: true }
+    })
 
-    console.log(`🔄 Syncing odds for sport: ${sport}`)
+    if (activeEvents.length === 0) {
+      return NextResponse.json({
+        success: true,
+        message: 'No active games selected. Go to /admin/games to select games.',
+        stats: { marketsCreated: 0, oddsSnapshotsCreated: 0 }
+      })
+    }
 
-    // Fetch fresh odds data
-    const processedMarkets = await oddsApiService.fetchOdds(sport)
-
-    console.log(`📊 Fetched ${processedMarkets.length} events`)
+    console.log(`Syncing odds for ${activeEvents.length} active event(s)...`)
 
     let marketsCreated = 0
     let oddsSnapshotsCreated = 0
 
-    for (const event of processedMarkets) {
-      // Create or update market
-      const market = await prisma.market.upsert({
-        where: {
-          id: event.eventId // Using eventId as our primary key
-        },
-        update: {
-          sport: event.sport,
-          league: event.league,
-          participants: event.participants,
-          startTime: event.startTime,
-          status: 'UPCOMING'
-        },
-        create: {
-          id: event.eventId,
-          sport: event.sport,
-          league: event.league,
-          eventId: event.eventId,
-          marketType: 'MONEYLINE', // We'll create separate markets for each type
-          participants: event.participants,
-          startTime: event.startTime,
-          status: 'UPCOMING'
-        }
-      })
+    // 1. Fetch spreads via bulk endpoint (1 credit)
+    const spreadData = await oddsApiService.fetchOdds('basketball_nba', ['spreads'])
+    const activeTeams = new Set(activeEvents.flatMap(e => [e.homeTeam, e.awayTeam]))
 
-      marketsCreated++
+    for (const event of spreadData) {
+      const isActiveEvent = event.participants.some(p => activeTeams.has(p))
+      if (!isActiveEvent) continue
 
-      // Create odds snapshots for each market type and bookmaker
       for (const marketData of event.markets) {
-        // Create separate market records for different market types
-        if (marketData.marketType !== 'MONEYLINE') {
-          await prisma.market.upsert({
-            where: {
-              id: `${event.eventId}-${marketData.marketType}`
-            },
-            update: {
-              sport: event.sport,
-              league: event.league,
-              participants: event.participants,
-              startTime: event.startTime,
-              status: 'UPCOMING'
-            },
-            create: {
-              id: `${event.eventId}-${marketData.marketType}`,
-              sport: event.sport,
-              league: event.league,
-              eventId: event.eventId,
-              marketType: marketData.marketType as MarketType,
-              participants: event.participants,
-              startTime: event.startTime,
-              status: 'UPCOMING'
-            }
-          })
-        }
+        if (marketData.marketType !== 'SPREAD') continue
 
-        // Create odds snapshot
+        const marketId = `${event.eventId}-SPREAD-${marketData.bookmaker}`
+
+        await prisma.market.upsert({
+          where: { id: marketId },
+          update: {
+            participants: event.participants,
+            startTime: event.startTime,
+            status: 'UPCOMING',
+            metadata: event.metadata || null
+          },
+          create: {
+            id: marketId,
+            sport: 'NBA',
+            league: 'National Basketball Association',
+            eventId: event.eventId,
+            marketType: 'SPREAD',
+            participants: event.participants,
+            startTime: event.startTime,
+            status: 'UPCOMING',
+            metadata: event.metadata || null
+          }
+        })
+        marketsCreated++
+
         await prisma.oddsSnapshot.create({
           data: {
-            marketId: marketData.marketType === 'MONEYLINE' ? market.id : `${event.eventId}-${marketData.marketType}`,
+            marketId,
             bookmaker: marketData.bookmaker,
             lineJSON: marketData.odds
           }
         })
-
         oddsSnapshotsCreated++
       }
     }
 
-    console.log(`✅ Sync complete: ${marketsCreated} markets, ${oddsSnapshotsCreated} odds snapshots`)
+    // 2. Fetch player props per event (1 credit per market per event)
+    const playerPropMarkets = ['player_points', 'player_rebounds', 'player_assists']
 
-    // Check API usage
+    for (const activeEvent of activeEvents) {
+      for (const propMarket of playerPropMarkets) {
+        const playerProps = await oddsApiService.fetchPlayerPropsForEvent(
+          'basketball_nba',
+          activeEvent.eventId,
+          [propMarket]
+        )
+
+        for (const prop of playerProps) {
+          for (const market of prop.markets) {
+            const playerName = prop.metadata?.player || prop.participants[0] || 'Unknown'
+            const marketId = `${activeEvent.eventId}-${playerName.replace(/\s+/g, '_')}-${market.marketType}`
+
+            await prisma.market.upsert({
+              where: { id: marketId },
+              update: {
+                participants: prop.participants,
+                startTime: prop.startTime,
+                status: 'UPCOMING',
+                metadata: {
+                  player: playerName,
+                  matchup: prop.metadata?.matchup || `${activeEvent.awayTeam} @ ${activeEvent.homeTeam}`,
+                  homeTeam: prop.metadata?.homeTeam || activeEvent.homeTeam,
+                  awayTeam: prop.metadata?.awayTeam || activeEvent.awayTeam,
+                  propType: market.marketType,
+                  apiEventId: activeEvent.eventId
+                }
+              },
+              create: {
+                id: marketId,
+                sport: 'NBA',
+                league: 'National Basketball Association',
+                eventId: prop.eventId,
+                marketType: market.marketType as any,
+                participants: prop.participants,
+                startTime: prop.startTime,
+                status: 'UPCOMING',
+                metadata: {
+                  player: playerName,
+                  matchup: prop.metadata?.matchup || `${activeEvent.awayTeam} @ ${activeEvent.homeTeam}`,
+                  homeTeam: prop.metadata?.homeTeam || activeEvent.homeTeam,
+                  awayTeam: prop.metadata?.awayTeam || activeEvent.awayTeam,
+                  propType: market.marketType,
+                  apiEventId: activeEvent.eventId
+                }
+              }
+            })
+            marketsCreated++
+
+            await prisma.oddsSnapshot.create({
+              data: {
+                marketId,
+                bookmaker: market.bookmaker,
+                lineJSON: market.odds
+              }
+            })
+            oddsSnapshotsCreated++
+          }
+        }
+      }
+    }
+
+    console.log(`Sync complete: ${marketsCreated} markets, ${oddsSnapshotsCreated} odds snapshots`)
+
     const usage = await oddsApiService.checkUsage()
-    console.log(`📈 API Usage: ${usage.used} used, ${usage.remaining} remaining`)
+    console.log(`API Usage: ${usage.used} used, ${usage.remaining} remaining`)
 
     return NextResponse.json({
       success: true,
@@ -102,7 +156,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Odds sync error:', error)
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to sync odds data',
         details: error instanceof Error ? error.message : 'Unknown error'
       },
@@ -111,27 +165,22 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    // Check API usage and available sports
-    const [usage, sports] = await Promise.all([
+    const [usage, activeEvents] = await Promise.all([
       oddsApiService.checkUsage(),
-      oddsApiService.fetchSports()
+      prisma.activeEvent.findMany({ where: { isActive: true } })
     ])
-
-    const activeSports = sports.filter(sport => sport.active)
 
     return NextResponse.json({
       apiUsage: usage,
-      availableSports: activeSports.map(sport => ({
-        key: sport.key,
-        title: sport.title
-      }))
+      activeEvents: activeEvents.length,
+      sport: 'basketball_nba'
     })
   } catch (error) {
     console.error('Odds info error:', error)
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to fetch odds info',
         details: error instanceof Error ? error.message : 'Unknown error'
       },

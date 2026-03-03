@@ -16,6 +16,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (email.toLowerCase() === 'admin@profitplay.com') {
+      return NextResponse.json(
+        { error: 'This email is reserved.' },
+        { status: 400 }
+      )
+    }
+
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
       where: { email }
@@ -31,12 +38,13 @@ export async function POST(request: NextRequest) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12)
 
-    // Create user
+    // Create user (force MEMBER role)
     const user = await prisma.user.create({
       data: {
         name,
         email,
         password: hashedPassword,
+        role: 'MEMBER',
         ageVerified: ageVerified || false,
         ageVerifiedAt: ageVerified ? new Date() : null,
       },

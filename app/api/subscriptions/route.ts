@@ -37,6 +37,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const isAdmin = session.user.email === 'admin@profitplay.com' && session.user.role === 'ADMIN'
+    if (!isAdmin && planUpper !== 'STANDARD') {
+      return NextResponse.json(
+        { error: 'Only the Standard plan is available during beta.' },
+        { status: 403 }
+      )
+    }
+
     // Get the ruleset for the plan
     const ruleset = await prisma.ruleset.findUnique({
       where: { plan: planUpper as SubscriptionPlan }

@@ -159,24 +159,9 @@ function BettingHistorySection({ challengeAccountId }: { challengeAccountId: str
       pickValue = lineJSON.under.total || lineJSON.under.line || null
     }
 
-    // Get actual value (simulated for now)
-    let actualValue: number | null = null
-    if (bet.status === 'WON' && pickValue !== null) {
-      if (bet.selection === 'over') {
-        actualValue = pickValue + Math.random() * 20 + 5
-      } else {
-        actualValue = pickValue - Math.random() * 20 - 5
-      }
-    } else if (bet.status === 'LOST' && pickValue !== null) {
-      if (bet.selection === 'over') {
-        actualValue = pickValue - Math.random() * 15 - 2
-      } else {
-        actualValue = pickValue + Math.random() * 15 + 2
-      }
-    }
-
-    // Generate mock game stats (in real app, this comes from settlements/API)
-    const gameStats = metadata.gameStats || generateMockGameStats(bet.market.sport, statType)
+    // Actual value and stats should come from settlements/API
+    const actualValue: number | null = metadata.actualValue ?? null
+    const gameStats: string | null = metadata.gameStats ?? null
 
     return {
       playerName,
@@ -196,24 +181,6 @@ function BettingHistorySection({ challengeAccountId }: { challengeAccountId: str
       wager: `$${firstBet.stake.toFixed(2)} wager`,
       potential: `$${firstBet.potentialPayout.toFixed(2)} potential`
     }
-  }
-
-  // Generate mock game stats for display
-  const generateMockGameStats = (sport: string, statType: string): string => {
-    if (sport === 'NFL') {
-      if (statType.includes('PASS')) {
-        return `${Math.floor(Math.random() * 30 + 15)}/${Math.floor(Math.random() * 50 + 25)} CMP, ${Math.floor(Math.random() * 250 + 150)} YD`
-      } else if (statType.includes('RUSH')) {
-        return `${Math.floor(Math.random() * 25 + 10)} CAR, ${Math.floor(Math.random() * 80 + 40)} YD`
-      } else if (statType.includes('REC')) {
-        return `${Math.floor(Math.random() * 10 + 3)}/${Math.floor(Math.random() * 12 + 5)} REC, ${Math.floor(Math.random() * 80 + 30)} YD`
-      }
-    } else if (sport === 'NBA') {
-      if (statType === 'PTS') {
-        return `${Math.floor(Math.random() * 15 + 20)} PTS, ${Math.floor(Math.random() * 12 + 5)} REB, ${Math.floor(Math.random() * 10 + 3)} AST`
-      }
-    }
-    return ''
   }
 
   const formatDate = (dateString: string) => {
@@ -614,7 +581,6 @@ export default function Dashboard() {
   const router = useRouter()
   const [challengeAccount, setChallengeAccount] = useState<ChallengeAccount | null>(null)
   const [loading, setLoading] = useState(true)
-  const [seeding, setSeeding] = useState(false)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -669,35 +635,6 @@ export default function Dashboard() {
       setChallengeAccount(null)
     } finally {
       setLoading(false)
-    }
-  }
-
-  const seedAdminData = async () => {
-    if (!session?.user?.id || session.user.role !== 'ADMIN') return
-
-    try {
-      setSeeding(true)
-      const response = await fetch('/api/admin/seed-admin-data', {
-        method: 'POST',
-        credentials: 'include'
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        alert(`Failed to seed admin data: ${error.error || 'Unknown error'}`)
-        return
-      }
-
-      const data = await response.json()
-      console.log('Admin data seeded:', data)
-      
-      // Refresh the challenge account
-      await fetchChallengeAccount()
-    } catch (error) {
-      console.error('Error seeding admin data:', error)
-      alert('Failed to seed admin data. Please try again.')
-    } finally {
-      setSeeding(false)
     }
   }
 
@@ -758,36 +695,24 @@ export default function Dashboard() {
               No Active Challenge
             </h1>
             <p style={{ color: '#cccccc', marginBottom: '2rem', fontSize: '1.125rem' }}>
-              {session?.user?.role === 'ADMIN' 
-                ? 'You don\'t have an active challenge account. Click below to set up admin test data.'
-                : 'You don\'t have an active challenge account. Subscribe to a plan to get started.'}
+              You don&apos;t have an active challenge account. Subscribe to a plan to get started.
             </p>
-            {session?.user?.role === 'ADMIN' ? (
-              <button
-                onClick={seedAdminData}
-                disabled={seeding}
-                className={seeding ? 'admin-seed-button admin-seed-button-disabled' : 'admin-seed-button'}
-              >
-                {seeding ? 'Setting up...' : 'Set Up Admin Test Data'}
-              </button>
-            ) : (
-              <Link
-                href="/pricing"
-                style={{
-                  display: 'inline-block',
-                  padding: '0.75rem 1.5rem',
-                  backgroundColor: 'white',
-                  color: '#121212',
-                  borderRadius: '8px',
-                  fontWeight: 600,
-                  textDecoration: 'none',
-                  transition: 'background-color 0.2s ease'
-                }}
-                className="hero-cta-button"
-              >
-                View Plans
-              </Link>
-            )}
+            <Link
+              href="/pricing"
+              style={{
+                display: 'inline-block',
+                padding: '0.75rem 1.5rem',
+                backgroundColor: 'white',
+                color: '#121212',
+                borderRadius: '8px',
+                fontWeight: 600,
+                textDecoration: 'none',
+                transition: 'background-color 0.2s ease'
+              }}
+              className="hero-cta-button"
+            >
+              View Plans
+            </Link>
           </div>
         </div>
       </div>

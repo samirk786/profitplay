@@ -1,11 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/prisma'
 import { checkChallengeRules, updateChallengeAccountState, calculatePnlFromBet } from '@/lib/rules-engine'
 import { createAuditLog, AuditActions } from '@/lib/audit-logger'
 
 export const dynamic = 'force-dynamic'
 
+async function requireAdmin() {
+  const session = await getServerSession(authOptions)
+  if (!session || session.user.role !== 'ADMIN' || session.user.email !== 'admin@profitplay.com') {
+    return null
+  }
+  return session
+}
+
 export async function GET(request: NextRequest) {
+  const session = await requireAdmin()
+  if (!session) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   try {
     const searchParams = request.nextUrl.searchParams
     const status = searchParams.get('status') || 'OPEN'
@@ -43,6 +58,11 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const session = await requireAdmin()
+  if (!session) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   try {
     const { betId, result, adminUserId } = await request.json()
 
@@ -200,6 +220,11 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  const session = await requireAdmin()
+  if (!session) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   try {
     const { betId, newResult, adminUserId } = await request.json()
 

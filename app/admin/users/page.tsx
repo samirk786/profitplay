@@ -23,40 +23,8 @@ export default function UsersPage() {
   const [roleFilter, setRoleFilter] = useState('ALL')
 
   useEffect(() => {
-    // TODO: Fetch users from API
-    // For now, show mock data
-    setTimeout(() => {
-      setUsers([
-        {
-          id: '1',
-          name: 'John Doe',
-          email: 'john@example.com',
-          role: 'MEMBER',
-          ageVerified: true,
-          createdAt: '2024-01-10T10:00:00Z',
-          subscriptions: [{ status: 'ACTIVE', plan: 'STANDARD' }]
-        },
-        {
-          id: '2',
-          name: 'Jane Smith',
-          email: 'jane@example.com',
-          role: 'MEMBER',
-          ageVerified: true,
-          createdAt: '2024-01-12T14:30:00Z',
-          subscriptions: [{ status: 'ACTIVE', plan: 'STARTER' }]
-        },
-        {
-          id: '3',
-          name: 'Admin User',
-          email: 'admin@profitplay.com',
-          role: 'ADMIN',
-          ageVerified: true,
-          createdAt: '2024-01-01T00:00:00Z',
-          subscriptions: []
-        }
-      ])
-      setLoading(false)
-    }, 1000)
+    setUsers([])
+    setLoading(false)
   }, [])
 
   const filteredUsers = users.filter(user => {
@@ -73,70 +41,60 @@ export default function UsersPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="admin-page flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading users...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-4 admin-muted">Loading users...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="admin-page">
       {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <Link href="/admin" className="text-2xl font-bold text-gray-900">
-              ProfitPlay Admin
+      <header className="admin-header">
+        <div className="admin-header-inner">
+          <Link href="/admin" className="admin-brand">
+            ProfitPlay Admin
+          </Link>
+          <nav className="admin-nav">
+            <Link href="/admin" className="admin-nav-link">
+              Dashboard
             </Link>
-            <nav className="flex space-x-8">
-              <Link href="/admin" className="text-gray-500 hover:text-gray-900">
-                Dashboard
-              </Link>
-              <Link href="/auth/signin" className="text-gray-500 hover:text-gray-900">
-                Sign Out
-              </Link>
-            </nav>
-          </div>
+            <Link href="/auth/signin" className="admin-nav-link">
+              Sign Out
+            </Link>
+          </nav>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="admin-container">
         {/* Page Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            User Management
-          </h1>
-          <p className="text-gray-600">
-            Manage users and their subscriptions.
-          </p>
+          <h1 className="admin-title">User Management</h1>
+          <p className="admin-subtitle">Manage users and their subscriptions.</p>
         </div>
 
         {/* Filters */}
-        <div className="bg-white p-6 rounded-lg shadow mb-8">
+        <div className="admin-card mb-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Search Users
-              </label>
+              <label className="block text-sm font-medium admin-muted mb-2">Search Users</label>
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search by name or email..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="admin-input"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Filter by Role
-              </label>
+              <label className="block text-sm font-medium admin-muted mb-2">Filter by Role</label>
               <select
                 value={roleFilter}
                 onChange={(e) => setRoleFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="admin-select"
               >
                 <option value="ALL">All Roles</option>
                 <option value="MEMBER">Members</option>
@@ -147,40 +105,40 @@ export default function UsersPage() {
         </div>
 
         {/* Users Table */}
-        <div className="bg-white shadow overflow-hidden sm:rounded-md">
-          <div className="px-4 py-5 sm:px-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900">
+        <div className="admin-list-card">
+          <div className="admin-list-header">
+            <h3 className="text-lg leading-6 font-medium text-white">
               Users ({filteredUsers.length})
             </h3>
           </div>
-          <ul className="divide-y divide-gray-200">
+          <ul>
             {filteredUsers.map((user) => (
               <li key={user.id}>
-                <div className="px-4 py-4 sm:px-6">
+                <div className="admin-list-row">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
                       <div className="flex-shrink-0">
-                        <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
-                          <span className="text-sm font-medium text-gray-700">
+                        <div className="h-10 w-10 rounded-full bg-[#2a2a2a] flex items-center justify-center">
+                          <span className="text-sm font-medium text-white">
                             {user.name.charAt(0).toUpperCase()}
                           </span>
                         </div>
                       </div>
                       <div className="ml-4">
                         <div className="flex items-center">
-                          <p className="text-sm font-medium text-gray-900">
+                          <p className="text-sm font-medium text-white">
                             {user.name}
                           </p>
-                          <span className={`ml-2 inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            user.role === 'ADMIN' 
-                              ? 'bg-purple-100 text-purple-800'
-                              : 'bg-green-100 text-green-800'
+                          <span className={`ml-2 admin-badge ${
+                            user.role === 'ADMIN'
+                              ? 'admin-badge-admin'
+                              : 'admin-badge-member'
                           }`}>
                             {user.role}
                           </span>
                         </div>
-                        <p className="text-sm text-gray-500">{user.email}</p>
-                        <p className="text-xs text-gray-400">
+                        <p className="text-sm admin-muted">{user.email}</p>
+                        <p className="text-xs admin-muted">
                           Joined: {formatDate(user.createdAt)}
                         </p>
                       </div>
@@ -189,26 +147,26 @@ export default function UsersPage() {
                       <div className="text-right">
                         {user.subscriptions.length > 0 ? (
                           <div>
-                            <p className="text-sm font-medium text-gray-900">
+                            <p className="text-sm font-medium text-white">
                               {user.subscriptions[0].plan}
                             </p>
                             <p className={`text-xs ${
                               user.subscriptions[0].status === 'ACTIVE'
-                                ? 'text-green-600'
-                                : 'text-red-600'
+                                ? 'text-green-400'
+                                : 'text-red-400'
                             }`}>
                               {user.subscriptions[0].status}
                             </p>
                           </div>
                         ) : (
-                          <p className="text-sm text-gray-500">No subscription</p>
+                          <p className="text-sm admin-muted">No subscription</p>
                         )}
                       </div>
                       <div className="flex space-x-2">
-                        <button className="text-blue-600 hover:text-blue-900 text-sm font-medium">
+                        <button className="admin-btn admin-btn-neutral admin-btn-small">
                           View Details
                         </button>
-                        <button className="text-gray-600 hover:text-gray-900 text-sm font-medium">
+                        <button className="admin-btn admin-btn-neutral admin-btn-small">
                           Edit
                         </button>
                       </div>
@@ -222,7 +180,7 @@ export default function UsersPage() {
 
         {filteredUsers.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-gray-500">No users found matching your criteria.</p>
+            <p className="admin-muted">No users found matching your criteria.</p>
           </div>
         )}
       </main>

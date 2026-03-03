@@ -105,60 +105,58 @@ export default function ManageGamesPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="admin-page flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading NBA games...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-4 admin-muted">Loading NBA games...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <Link href="/admin" className="text-2xl font-bold text-gray-900">
-              ProfitPlay Admin
+    <div className="admin-page">
+      <header className="admin-header">
+        <div className="admin-header-inner">
+          <Link href="/admin" className="admin-brand">
+            ProfitPlay Admin
+          </Link>
+          <nav className="admin-nav">
+            <Link href="/admin" className="admin-nav-link">
+              Dashboard
             </Link>
-            <nav className="flex space-x-8">
-              <Link href="/admin" className="text-gray-500 hover:text-gray-900">
-                Dashboard
-              </Link>
-              <Link href="/admin/settlements" className="text-gray-500 hover:text-gray-900">
-                Settlements
-              </Link>
-            </nav>
-          </div>
+            <Link href="/admin/settlements" className="admin-nav-link">
+              Settlements
+            </Link>
+          </nav>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8 flex justify-between items-start">
+      <main className="admin-container">
+        <div className="mb-8 admin-inline">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          <h1 className="admin-title">
               Manage NBA Games
             </h1>
-            <p className="text-gray-600">
+          <p className="admin-subtitle">
               Select up to 2 games to display on the homepage. Fetching events is free (0 API credits).
             </p>
           </div>
           <div className="flex items-center space-x-4">
-            <span className="text-sm font-medium text-gray-700">
+          <span className="text-sm font-medium admin-light">
               {activeCount}/2 games active
             </span>
             {activeCount > 0 && (
               <button
                 onClick={deactivateAll}
-                className="bg-red-100 text-red-700 px-4 py-2 rounded-md hover:bg-red-200 text-sm font-medium"
+              className="admin-btn admin-btn-danger"
               >
                 Deactivate All
               </button>
             )}
             <button
               onClick={fetchEvents}
-              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm font-medium"
+            className="admin-btn admin-btn-primary"
             >
               Refresh
             </button>
@@ -166,74 +164,75 @@ export default function ManageGamesPage() {
         </div>
 
         {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
-            <p className="text-red-700 text-sm">{error}</p>
+        <div className="mb-6 admin-alert admin-alert-error">
+          <p className="text-sm">{error}</p>
           </div>
         )}
 
         {events.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-lg shadow">
-            <p className="text-gray-500 text-lg">No upcoming NBA games found.</p>
-            <p className="text-gray-400 text-sm mt-2">Check back when games are scheduled.</p>
+        <div className="text-center py-12 admin-card">
+          <p className="admin-light text-lg">No upcoming NBA games found.</p>
+          <p className="admin-muted text-sm mt-2">Check back when games are scheduled.</p>
           </div>
         ) : (
           <div className="space-y-3">
             {events.map((event) => (
               <div
                 key={event.eventId}
-                className={`bg-white p-5 rounded-lg shadow border-2 transition-colors ${
-                  event.isActive
-                    ? 'border-green-500 bg-green-50'
-                    : 'border-transparent hover:border-gray-200'
-                }`}
-              >
-                <div className="flex justify-between items-center">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3">
-                      {event.isActive && (
-                        <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded-full text-xs font-semibold">
-                          ACTIVE
-                        </span>
-                      )}
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        {event.awayTeam} @ {event.homeTeam}
-                      </h3>
-                    </div>
-                    <p className="text-sm text-gray-500 mt-1">
-                      {formatGameTime(event.commenceTime)}
-                    </p>
-                    <p className="text-xs text-gray-400 mt-0.5 font-mono">
-                      ID: {event.eventId}
-                    </p>
+              className={`admin-card ${event.isActive ? '' : ''}`}
+              style={{
+                borderWidth: '2px',
+                borderColor: event.isActive ? 'rgba(34, 197, 94, 0.6)' : 'transparent',
+                background: event.isActive ? 'rgba(34, 197, 94, 0.08)' : undefined
+              }}
+            >
+              <div className="flex justify-between items-center">
+                <div className="flex-1">
+                  <div className="flex items-center space-x-3">
+                    {event.isActive && (
+                      <span className="admin-pill admin-pill-active">
+                        ACTIVE
+                      </span>
+                    )}
+                    <h3 className="text-lg font-semibold text-white">
+                      {event.awayTeam} @ {event.homeTeam}
+                    </h3>
                   </div>
-                  <button
-                    onClick={() => toggleGame(event)}
-                    disabled={toggling === event.eventId || (!event.isActive && activeCount >= 2)}
-                    className={`px-6 py-2.5 rounded-md text-sm font-medium transition-colors ${
-                      event.isActive
-                        ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                        : activeCount >= 2
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                        : 'bg-green-600 text-white hover:bg-green-700'
-                    } ${toggling === event.eventId ? 'opacity-50' : ''}`}
-                  >
-                    {toggling === event.eventId
-                      ? 'Updating...'
-                      : event.isActive
-                      ? 'Deactivate'
-                      : activeCount >= 2
-                      ? 'Max reached'
-                      : 'Activate'}
-                  </button>
+                  <p className="text-sm admin-muted mt-1">
+                    {formatGameTime(event.commenceTime)}
+                  </p>
+                  <p className="text-xs admin-mono mt-0.5">
+                    ID: {event.eventId}
+                  </p>
                 </div>
+                <button
+                  onClick={() => toggleGame(event)}
+                  disabled={toggling === event.eventId || (!event.isActive && activeCount >= 2)}
+                  className={`admin-btn ${
+                    event.isActive
+                      ? 'admin-btn-danger'
+                      : activeCount >= 2
+                      ? 'admin-btn-neutral'
+                      : 'admin-btn-success'
+                  } ${toggling === event.eventId ? 'opacity-50' : ''}`}
+                >
+                  {toggling === event.eventId
+                    ? 'Updating...'
+                    : event.isActive
+                    ? 'Deactivate'
+                    : activeCount >= 2
+                    ? 'Max reached'
+                    : 'Activate'}
+                </button>
               </div>
+            </div>
             ))}
           </div>
         )}
 
-        <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h3 className="text-blue-900 font-semibold text-sm">API Credit Usage</h3>
-          <p className="text-blue-700 text-sm mt-1">
+        <div className="mt-8 admin-alert" style={{ borderColor: 'rgba(59, 130, 246, 0.35)', background: 'rgba(59, 130, 246, 0.1)', color: '#bfdbfe' }}>
+          <h3 className="font-semibold text-sm">API Credit Usage</h3>
+          <p className="text-sm mt-1">
             Fetching the events list is free. Once games are activated, refreshing odds on the homepage costs 7 credits:
             1 for spreads + 2 events x 3 player prop markets = 7 total.
           </p>

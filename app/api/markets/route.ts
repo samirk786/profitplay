@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/prisma'
 import { oddsApiService } from '@/lib/odds-api'
 
@@ -40,7 +42,10 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const sport = searchParams.get('sport') || 'NBA'
     const marketType = searchParams.get('marketType')
-    const refresh = searchParams.get('refresh') === 'true'
+    const refreshRequested = searchParams.get('refresh') === 'true'
+    const session = await getServerSession(authOptions)
+    const isAdmin = session?.user?.role === 'ADMIN' && session?.user?.email === 'admin@profitplay.com'
+    const refresh = refreshRequested && isAdmin
 
     // Get admin-selected active events
     const activeEvents = await prisma.activeEvent.findMany({
@@ -50,7 +55,8 @@ export async function GET(request: NextRequest) {
     if (activeEvents.length === 0) {
       return NextResponse.json({
         markets: [],
-        message: 'No active games selected. Go to /admin/games to select games.'
+        message: 'No props are available yet. Please check back soon.',
+        adminMessage: 'No active games selected. Go to /admin/games to select games.'
       })
     }
 

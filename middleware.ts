@@ -21,7 +21,7 @@ export default withAuth(
 
         // Check admin routes
         if (req.nextUrl.pathname.startsWith('/admin')) {
-          const isAdmin = token.role === 'ADMIN'
+          const isAdmin = token.role === 'ADMIN' && token.email === 'admin@profitplay.com'
           console.log('🔐 Admin route check:', isAdmin)
           return isAdmin
         }
@@ -45,6 +45,7 @@ export const config = {
     '/dashboard/:path*',
     '/markets/:path*',
     '/admin/:path*',
+    '/api/admin/:path*',
     '/api/bets/:path*'
     // Note: /api/users is not in the matcher - POST (signup) is public, GET requires auth (handled in route)
   ]

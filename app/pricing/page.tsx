@@ -89,6 +89,12 @@ export default function Pricing() {
   }
 
   const handlePlanSelection = async (planName: string) => {
+    const isStandard = planName.toUpperCase() === 'STANDARD'
+    const isAdmin = session?.user?.email === 'admin@profitplay.com' && session?.user?.role === 'ADMIN'
+    if (!isStandard && !isAdmin) {
+      return
+    }
+
     if (!session) {
       // Not logged in - redirect to signup
       router.push(`/auth/signup?plan=${planName.toLowerCase()}`)
@@ -166,12 +172,20 @@ export default function Pricing() {
             const planKey = plan.name.toUpperCase()
             const currentRank = currentPlan ? planRank[currentPlan] : null
             const thisRank = planRank[planKey]
+            const isStandardPlan = planKey === 'STANDARD'
+            const isAdmin = session?.user?.email === 'admin@profitplay.com' && session?.user?.role === 'ADMIN'
             const isSelected = currentRank !== null && currentRank === thisRank
             const isUpgrade = currentRank !== null && thisRank > currentRank
             const isLower = currentRank !== null && thisRank < currentRank
 
-            const buttonLabel = isSelected ? 'Selected' : isUpgrade ? 'Upgrade' : 'Get Started'
-            const isDisabled = loading === plan.name || isSelected || isLower
+            const buttonLabel = isSelected
+              ? 'Selected'
+              : !isStandardPlan && !isAdmin
+              ? 'Unavailable'
+              : isUpgrade
+              ? 'Upgrade'
+              : 'Get Started'
+            const isDisabled = loading === plan.name || isSelected || isLower || (!isStandardPlan && !isAdmin)
 
             return (
             <div
@@ -288,10 +302,13 @@ export default function Pricing() {
                 </button>
               ) : (
                 <Link
-                  href={`/auth/signup?plan=${plan.name.toLowerCase()}`}
+                  href={isDisabled ? '#' : `/auth/signup?plan=${plan.name.toLowerCase()}`}
                   className={`pricing-link-button ${plan.popular ? 'pricing-link-button-popular' : 'pricing-link-button-secondary'}`}
+                  onClick={(e) => {
+                    if (isDisabled) e.preventDefault()
+                  }}
                 >
-                  Get Started
+                  {buttonLabel}
                 </Link>
               )}
             </div>

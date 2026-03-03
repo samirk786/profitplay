@@ -157,7 +157,9 @@ export default function Home() {
       const data = await response.json()
 
       if (data.message && data.markets?.length === 0) {
-        setPropsError(data.message)
+        const isAdmin = session?.user?.role === 'ADMIN'
+        const message = isAdmin && data.adminMessage ? data.adminMessage : data.message
+        setPropsError(message)
         setPlayerProps([])
         return
       }
@@ -247,7 +249,10 @@ export default function Home() {
     loadProps()
   }, [loadProps])
 
+  const isAdmin = session?.user?.role === 'ADMIN' && session?.user?.email === 'admin@profitplay.com'
+
   const handleRefreshOdds = async () => {
+    if (!isAdmin) return
     setRefreshing(true)
     await loadProps(true)
   }
@@ -512,14 +517,16 @@ export default function Home() {
               {category}
             </button>
           ))}
-          <button
-            className="category-pill"
-            style={{ marginLeft: 'auto', fontSize: '0.75rem', opacity: refreshing ? 0.5 : 1 }}
-            onClick={handleRefreshOdds}
-            disabled={refreshing}
-          >
-            {refreshing ? 'Refreshing...' : 'Refresh Odds'}
-          </button>
+          {isAdmin && (
+            <button
+              className="category-pill"
+              style={{ marginLeft: 'auto', fontSize: '0.75rem', opacity: refreshing ? 0.5 : 1 }}
+              onClick={handleRefreshOdds}
+              disabled={refreshing}
+            >
+              {refreshing ? 'Refreshing...' : 'Refresh Odds'}
+            </button>
+          )}
         </div>
 
         {/* Games Filter Button */}

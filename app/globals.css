@@ -1174,3 +1174,371 @@ body {
   background-color: #666666 !important;
   cursor: not-allowed !important;
 }
+
+/* Admin UI Theme */
+.admin-page {
+  min-height: 100vh;
+  background: #121212;
+  color: white;
+}
+
+.admin-header {
+  background: #121212;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.admin-header-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.5rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.admin-brand {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: white;
+  text-decoration: none;
+}
+
+.admin-nav {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.admin-nav-link {
+  color: #cbd5f5;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.admin-nav-link:hover {
+  color: white;
+}
+
+.admin-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.admin-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 0.5rem;
+}
+
+.admin-subtitle {
+  color: #cbd5f5;
+}
+
+.admin-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.25rem;
+}
+
+.admin-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.admin-card {
+  background: #1e1e1e;
+  border: 1px solid #2a2a2a;
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.35);
+}
+
+.admin-card-title {
+  font-size: 0.875rem;
+  color: #94a3b8;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.admin-card-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: white;
+}
+
+.admin-muted {
+  color: #94a3b8;
+}
+
+.admin-light {
+  color: #e2e8f0;
+}
+
+.admin-inline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.admin-action-link {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.65rem 0.85rem;
+  border-radius: 10px;
+  color: #e2e8f0;
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.admin-action-link:hover {
+  background: #2a2a2a;
+  border-color: #343434;
+  transform: translateY(-1px);
+}
+
+.admin-action-link:active {
+  transform: translateY(0);
+}
+
+.admin-action-link-title {
+  font-weight: 600;
+  color: white;
+}
+
+.admin-action-link-subtitle {
+  margin-top: 0.2rem;
+  font-size: 0.85rem;
+  color: #94a3b8;
+}
+
+.admin-btn {
+  border: none;
+  border-radius: 10px;
+  padding: 0.6rem 1.2rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.admin-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.admin-btn-primary {
+  background: #2563eb;
+  color: white;
+}
+
+.admin-btn-primary:hover {
+  background: #3b82f6;
+}
+
+.admin-btn-success {
+  background: #16a34a;
+  color: white;
+}
+
+.admin-btn-success:hover {
+  background: #22c55e;
+}
+
+.admin-btn-danger {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+}
+
+.admin-btn-danger:hover {
+  background: rgba(239, 68, 68, 0.25);
+}
+
+.admin-btn-neutral {
+  background: #2a2a2a;
+  color: #e2e8f0;
+}
+
+.admin-btn-neutral:hover {
+  background: #343434;
+}
+
+.admin-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.admin-pill-active {
+  background: rgba(34, 197, 94, 0.2);
+  color: #bbf7d0;
+}
+
+.admin-alert {
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  border: 1px solid transparent;
+}
+
+.admin-alert-success {
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(34, 197, 94, 0.35);
+  color: #bbf7d0;
+}
+
+.admin-alert-error {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+}
+
+.admin-tab-bar {
+  display: inline-flex;
+  gap: 0.5rem;
+  background: #1e1e1e;
+  border: 1px solid #2a2a2a;
+  border-radius: 999px;
+  padding: 0.35rem;
+}
+
+.admin-tab {
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  padding: 0.45rem 1rem;
+  border-radius: 999px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.admin-tab.active {
+  background: #2a2a2a;
+  color: white;
+}
+
+.admin-list-card {
+  background: #1e1e1e;
+  border: 1px solid #2a2a2a;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.35);
+}
+
+.admin-list-header {
+  background: #171717;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid #2a2a2a;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.admin-list-row {
+  padding: 0.85rem 1.25rem;
+  border-top: 1px solid #2a2a2a;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.admin-tile-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  border-radius: 14px;
+  border: 1px solid #2a2a2a;
+  background: #1e1e1e;
+  padding: 1rem;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+
+.admin-tile-link:hover {
+  border-color: #3b3b3b;
+  background: #222222;
+  transform: translateY(-1px);
+}
+
+.admin-tile-link:active {
+  transform: translateY(0);
+}
+
+.admin-badge {
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.admin-badge-open {
+  background: rgba(234, 179, 8, 0.25);
+  color: #fef08a;
+}
+
+.admin-badge-won {
+  background: rgba(34, 197, 94, 0.25);
+  color: #bbf7d0;
+}
+
+.admin-badge-lost {
+  background: rgba(239, 68, 68, 0.25);
+  color: #fca5a5;
+}
+
+.admin-badge-push {
+  background: rgba(148, 163, 184, 0.25);
+  color: #e2e8f0;
+}
+
+.admin-badge-admin {
+  background: rgba(139, 92, 246, 0.25);
+  color: #ddd6fe;
+}
+
+.admin-badge-member {
+  background: rgba(34, 197, 94, 0.25);
+  color: #bbf7d0;
+}
+
+.admin-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  color: #94a3b8;
+}
+
+.admin-input,
+.admin-select {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid #2a2a2a;
+  background: #121212;
+  color: white;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.admin-input:focus,
+.admin-select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.admin-btn-small {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.75rem;
+}

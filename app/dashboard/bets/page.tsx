@@ -208,27 +208,9 @@ export default function BetsPage() {
       }
     }
 
-    // For now, we'll simulate actual values (in real app, this comes from settlements)
-    // For WON bets, actual > pick (if over) or actual < pick (if under)
-    // For LOST bets, opposite
-    if (bet.status === 'WON' && pickValue !== null) {
-      if (bet.selection === 'over') {
-        actualValue = pickValue + Math.random() * 20 + 5 // Actual > pick
-      } else {
-        actualValue = pickValue - Math.random() * 20 - 5 // Actual < pick
-      }
-    } else if (bet.status === 'LOST' && pickValue !== null) {
-      if (bet.selection === 'over') {
-        actualValue = pickValue - Math.random() * 15 - 2 // Actual < pick
-      } else {
-        actualValue = pickValue + Math.random() * 15 + 2 // Actual > pick
-      }
-    } else if (bet.status === 'OPEN') {
-      actualValue = null // No actual value yet
-    }
-
-    // Generate mock game stats (in real app, this comes from settlements/API)
-    const gameStats = metadata.gameStats || generateMockGameStats(bet.market.sport, statType)
+    // Actual value and stats should come from settlements/API
+    actualValue = metadata.actualValue ?? null
+    const gameStats: string | null = metadata.gameStats ?? null
 
     return {
       name: playerName,
@@ -241,26 +223,6 @@ export default function BetsPage() {
       statType,
       gameStats
     }
-  }
-
-  // Generate mock game stats for display
-  const generateMockGameStats = (sport: string, statType: string): string => {
-    if (sport === 'NFL') {
-      if (statType.includes('PASS') || statType.includes('CMP')) {
-        return `${Math.floor(Math.random() * 30 + 15)}/${Math.floor(Math.random() * 50 + 25)} CMP, ${Math.floor(Math.random() * 250 + 150)} YD, ${Math.floor(Math.random() * 8 + 2)} CAR, ${Math.floor(Math.random() * 30 + 15)} YD`
-      } else if (statType.includes('RUSH') || statType.includes('CAR')) {
-        return `${Math.floor(Math.random() * 25 + 10)} CAR, ${Math.floor(Math.random() * 80 + 40)} YD, ${Math.floor(Math.random() * 5 + 2)}/${Math.floor(Math.random() * 7 + 3)} REC, ${Math.floor(Math.random() * 50 + 20)} YD`
-      } else if (statType.includes('REC')) {
-        return `${Math.floor(Math.random() * 10 + 3)}/${Math.floor(Math.random() * 12 + 5)} REC, ${Math.floor(Math.random() * 80 + 30)} YD`
-      }
-    } else if (sport === 'NBA') {
-      if (statType === 'PTS') {
-        return `${Math.floor(Math.random() * 15 + 20)} PTS, ${Math.floor(Math.random() * 12 + 5)} REB, ${Math.floor(Math.random() * 10 + 3)} AST`
-      }
-    } else if (sport === 'MLB') {
-      return `${Math.floor(Math.random() * 4 + 1)} H, ${Math.floor(Math.random() * 2)} HR, ${Math.floor(Math.random() * 3)} RBI`
-    }
-    return ''
   }
 
   const getOutcomeText = (group: Bet[]) => {

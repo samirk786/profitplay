@@ -185,12 +185,12 @@ export default function AdminSettlementsPage() {
 
   const getStatusBadge = (status: string) => {
     const colors: Record<string, string> = {
-      OPEN: 'bg-yellow-100 text-yellow-800',
-      WON: 'bg-green-100 text-green-800',
-      LOST: 'bg-red-100 text-red-800',
-      PUSH: 'bg-gray-100 text-gray-800',
+      OPEN: 'bg-yellow-500/20 text-yellow-200',
+      WON: 'bg-green-500/20 text-green-200',
+      LOST: 'bg-red-500/20 text-red-200',
+      PUSH: 'bg-slate-500/20 text-slate-200',
     }
-    return colors[status] || 'bg-gray-100 text-gray-800'
+    return colors[status] || 'bg-slate-500/20 text-slate-200'
   }
 
   const formatTime = (dateStr: string) => {
@@ -203,56 +203,50 @@ export default function AdminSettlementsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <Link href="/admin" className="text-2xl font-bold text-gray-900">
-              ProfitPlay Admin
+    <div className="admin-page">
+      <header className="admin-header">
+        <div className="admin-header-inner">
+          <Link href="/admin" className="admin-brand">
+            ProfitPlay Admin
+          </Link>
+          <nav className="admin-nav">
+            <Link href="/admin" className="admin-nav-link">
+              Dashboard
             </Link>
-            <nav className="flex space-x-8">
-              <Link href="/admin" className="text-gray-500 hover:text-gray-900">
-                Dashboard
-              </Link>
-              <Link href="/admin/games" className="text-gray-500 hover:text-gray-900">
-                Games
-              </Link>
-            </nav>
-          </div>
+            <Link href="/admin/games" className="admin-nav-link">
+              Games
+            </Link>
+          </nav>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="admin-container">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Bet Settlements</h1>
-          <p className="text-gray-600">
+          <h1 className="admin-title">Bet Settlements</h1>
+          <p className="admin-subtitle">
             Manually grade bets. Look up player stats after games and mark each bet as Won, Lost, or Push.
           </p>
         </div>
 
         {/* Status message */}
         {successMessage && (
-          <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-3">
-            <p className="text-green-700 text-sm">{successMessage}</p>
+          <div className="mb-4 admin-alert admin-alert-success">
+            <p className="text-sm">{successMessage}</p>
           </div>
         )}
         {error && (
-          <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3">
-            <p className="text-red-700 text-sm">{error}</p>
+          <div className="mb-4 admin-alert admin-alert-error">
+            <p className="text-sm">{error}</p>
           </div>
         )}
 
         {/* Status Filter Tabs */}
-        <div className="flex space-x-1 mb-6 bg-gray-100 rounded-lg p-1 w-fit">
+        <div className="admin-tab-bar mb-6">
           {(['OPEN', 'WON', 'LOST', 'PUSH', 'ALL'] as StatusFilter[]).map(status => (
             <button
               key={status}
               onClick={() => setStatusFilter(status)}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                statusFilter === status
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+              className={`admin-tab ${statusFilter === status ? 'active' : ''}`}
             >
               {status}
             </button>
@@ -261,12 +255,12 @@ export default function AdminSettlementsPage() {
 
         {loading ? (
           <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading bets...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+            <p className="mt-4 admin-muted">Loading bets...</p>
           </div>
         ) : Object.keys(groupedBets).length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-lg shadow">
-            <p className="text-gray-500 text-lg">No {statusFilter === 'ALL' ? '' : statusFilter.toLowerCase()} bets found.</p>
+          <div className="text-center py-12 admin-card">
+            <p className="admin-light text-lg">No {statusFilter === 'ALL' ? '' : statusFilter.toLowerCase()} bets found.</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -276,28 +270,28 @@ export default function AdminSettlementsPage() {
               const hasOpenBets = groupBets.some(b => b.status === 'OPEN')
 
               return (
-                <div key={groupKey} className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+                <div key={groupKey} className="admin-list-card">
                   {/* Group Header */}
-                  <div className="px-5 py-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+                  <div className="admin-list-header">
                     <div className="flex items-center space-x-3">
                       {isParlay && (
-                        <span className="bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full text-xs font-semibold">
+                        <span className="admin-pill" style={{ background: 'rgba(139, 92, 246, 0.2)', color: '#ddd6fe' }}>
                           PARLAY ({groupBets.length} legs)
                         </span>
                       )}
-                      <span className="text-sm text-gray-600">
+                      <span className="text-sm admin-light">
                         {firstBet.challengeAccount.user.name || firstBet.challengeAccount.user.email}
                       </span>
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs admin-muted">
                         {formatTime(firstBet.placedAt)}
                       </span>
                     </div>
                     <div className="flex items-center space-x-3">
-                      <span className="text-sm font-medium text-gray-700">
+                      <span className="text-sm font-medium admin-light">
                         Stake: ${firstBet.stake.toFixed(2)}
                       </span>
                       {firstBet.parlayMultiplier && (
-                        <span className="text-sm text-gray-500">
+                        <span className="text-sm admin-muted">
                           {firstBet.parlayMultiplier}x &rarr; ${firstBet.potentialPayout.toFixed(2)}
                         </span>
                       )}
@@ -305,26 +299,36 @@ export default function AdminSettlementsPage() {
                   </div>
 
                   {/* Individual Bet Legs */}
-                  <div className="divide-y divide-gray-100">
+                  <div>
                     {groupBets.map(bet => (
-                      <div key={bet.id} className="px-5 py-3 flex items-center justify-between">
+                      <div key={bet.id} className="admin-list-row">
                         <div className="flex-1">
                           <div className="flex items-center space-x-2">
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${getStatusBadge(bet.status)}`}>
+                            <span
+                              className={`admin-badge ${
+                                bet.status === 'OPEN'
+                                  ? 'admin-badge-open'
+                                  : bet.status === 'WON'
+                                  ? 'admin-badge-won'
+                                  : bet.status === 'LOST'
+                                  ? 'admin-badge-lost'
+                                  : 'admin-badge-push'
+                              }`}
+                            >
                               {bet.status}
                             </span>
-                            <span className="font-semibold text-gray-900">
+                            <span className="font-semibold text-white">
                               {getPlayerName(bet)}
                             </span>
                           </div>
-                          <div className="mt-1 text-sm text-gray-600">
-                            <span className="font-medium">{getMarketLabel(bet)}</span>
+                          <div className="mt-1 text-sm admin-light">
+                            <span className="font-medium text-white">{getMarketLabel(bet)}</span>
                             {' '}&middot;{' '}
-                            Line: <span className="font-mono">{getLineValue(bet)}</span>
+                            Line: <span className="admin-mono">{getLineValue(bet)}</span>
                             {' '}&middot;{' '}
-                            Pick: <span className="font-semibold capitalize">{bet.selection}</span>
+                            Pick: <span className="font-semibold capitalize text-slate-100">{bet.selection}</span>
                           </div>
-                          <div className="text-xs text-gray-400 mt-0.5">
+                          <div className="text-xs admin-muted mt-0.5">
                             {bet.market.metadata?.matchup || bet.market.participants.join(' vs ')}
                           </div>
                         </div>
@@ -335,21 +339,21 @@ export default function AdminSettlementsPage() {
                             <button
                               onClick={() => handleSettleBet(bet.id, 'WON')}
                               disabled={settlingBetId === bet.id}
-                              className="px-3 py-1.5 bg-green-600 text-white rounded-md text-xs font-medium hover:bg-green-700 disabled:opacity-50"
+                              className="admin-btn admin-btn-success"
                             >
                               {settlingBetId === bet.id ? '...' : 'Won'}
                             </button>
                             <button
                               onClick={() => handleSettleBet(bet.id, 'LOST')}
                               disabled={settlingBetId === bet.id}
-                              className="px-3 py-1.5 bg-red-600 text-white rounded-md text-xs font-medium hover:bg-red-700 disabled:opacity-50"
+                              className="admin-btn admin-btn-danger"
                             >
                               {settlingBetId === bet.id ? '...' : 'Lost'}
                             </button>
                             <button
                               onClick={() => handleSettleBet(bet.id, 'PUSH')}
                               disabled={settlingBetId === bet.id}
-                              className="px-3 py-1.5 bg-gray-400 text-white rounded-md text-xs font-medium hover:bg-gray-500 disabled:opacity-50"
+                              className="admin-btn admin-btn-neutral"
                             >
                               Push
                             </button>
@@ -361,18 +365,18 @@ export default function AdminSettlementsPage() {
 
                   {/* Parlay Quick Actions */}
                   {isParlay && hasOpenBets && (
-                    <div className="px-5 py-3 bg-gray-50 border-t border-gray-200 flex justify-end space-x-2">
+                    <div className="admin-list-header" style={{ justifyContent: 'flex-end' }}>
                       <button
                         onClick={() => handleSettleAllParlay(groupBets, 'WON')}
                         disabled={!!settlingBetId}
-                        className="px-4 py-1.5 bg-green-100 text-green-700 rounded-md text-xs font-medium hover:bg-green-200 disabled:opacity-50"
+                        className="admin-btn admin-btn-success"
                       >
                         Settle All Won
                       </button>
                       <button
                         onClick={() => handleSettleAllParlay(groupBets, 'LOST')}
                         disabled={!!settlingBetId}
-                        className="px-4 py-1.5 bg-red-100 text-red-700 rounded-md text-xs font-medium hover:bg-red-200 disabled:opacity-50"
+                        className="admin-btn admin-btn-danger"
                       >
                         Settle All Lost
                       </button>

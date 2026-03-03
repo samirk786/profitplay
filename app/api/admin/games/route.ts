@@ -1,14 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/prisma'
 import { oddsApiService } from '@/lib/odds-api'
 
 export const dynamic = 'force-dynamic'
+
+async function requireAdmin() {
+  const session = await getServerSession(authOptions)
+  if (!session || session.user.role !== 'ADMIN' || session.user.email !== 'admin@profitplay.com') {
+    return null
+  }
+  return session
+}
 
 /**
  * GET: Fetch available NBA events from Odds API + current active selections.
  * The events endpoint is FREE (0 credits).
  */
 export async function GET() {
+  const session = await requireAdmin()
+  if (!session) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   try {
     // Fetch upcoming NBA events from the Odds API (free)
     let apiEvents: Array<{
@@ -63,6 +78,11 @@ export async function GET() {
  * POST: Toggle a game as active/inactive. Max 2 active at a time.
  */
 export async function POST(request: NextRequest) {
+  const session = await requireAdmin()
+  if (!session) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   try {
     const { eventId, sport, homeTeam, awayTeam, commenceTime, isActive } = await request.json()
 
@@ -125,6 +145,11 @@ export async function POST(request: NextRequest) {
  * DELETE: Deactivate all games.
  */
 export async function DELETE() {
+  const session = await requireAdmin()
+  if (!session) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   try {
     await prisma.activeEvent.updateMany({
       where: { isActive: true },

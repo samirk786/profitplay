@@ -83,10 +83,12 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
+        const email = (user as any).email || ''
         token.id = user.id
         token.sub = user.id
-        token.role = (user as any).role
-        console.log('🔑 JWT callback - Token set:', { id: token.id, role: token.role })
+        token.email = email
+        token.role = email === 'admin@profitplay.com' ? 'ADMIN' : 'MEMBER'
+        console.log('🔑 JWT callback - Token set:', { id: token.id, role: token.role, email })
       }
       return token
     },
@@ -94,7 +96,8 @@ export const authOptions: NextAuthOptions = {
       if (token && session.user) {
         session.user.id = token.id as string || token.sub || ''
         session.user.role = (token.role as string) || ''
-        console.log('📋 Session callback - Session set:', { id: session.user.id, role: session.user.role })
+        session.user.email = (token.email as string) || session.user.email
+        console.log('📋 Session callback - Session set:', { id: session.user.id, role: session.user.role, email: session.user.email })
       }
       return session
     },
