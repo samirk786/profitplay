@@ -50,6 +50,10 @@ const getPropKey = (sport: string, playerName: string, category: string) => {
   return `${sport}-${playerName}-${category}`
 }
 
+const getSpreadKey = (gameId: string, teamName: string) => {
+  return `SPREAD-${gameId}-${teamName}`
+}
+
 export default function Home() {
   const { data: session } = useSession()
   const router = useRouter()
@@ -353,6 +357,51 @@ export default function Home() {
         return updated
       })
     }
+  }
+
+  const handleSpreadSelection = (game: PlayerProp, team: 'away' | 'home') => {
+    const spreadData = (game as any)._spreadData
+    if (!spreadData) return
+
+    const teamName = team === 'away' ? spreadData.away.team : spreadData.home.team
+    const otherTeamName = team === 'away' ? spreadData.home.team : spreadData.away.team
+    const key = getSpreadKey(game.id, teamName)
+    const otherKey = getSpreadKey(game.id, otherTeamName)
+    const currentSelection = selectedPicks[key]?.choice
+    const hasOtherSelection = !!selectedPicks[otherKey]
+
+    if (!currentSelection && !hasOtherSelection && picksCount >= 8) {
+      console.log("Maximum of 8 picks reached.")
+      return
+    }
+
+    if (currentSelection) {
+      setSelectedPicks(prev => {
+        const updated = { ...prev }
+        delete updated[key]
+        return updated
+      })
+      return
+    }
+
+    const fakeProp: PlayerProp = {
+      ...game,
+      playerName: teamName,
+      displayName: teamName,
+      line: team === 'away' ? spreadData.away.spread : spreadData.home.spread,
+      category: 'Spread'
+    }
+
+    setSelectedPicks(prev => {
+      const updated = { ...prev }
+      delete updated[otherKey]
+      updated[key] = {
+        ...fakeProp,
+        choice: 'over',
+        marketId: game.id
+      }
+      return updated
+    })
   }
 
   const toggleLike = (player: PlayerProp) => {
@@ -682,8 +731,8 @@ export default function Home() {
             const spreadData = game._spreadData
             if (!spreadData) return null
 
-            const awayKey = getPropKey(game.sport, spreadData.away.team, 'Spread')
-            const homeKey = getPropKey(game.sport, spreadData.home.team, 'Spread')
+            const awayKey = getSpreadKey(game.id, spreadData.away.team)
+            const homeKey = getSpreadKey(game.id, spreadData.home.team)
             const awaySelected = selectedPicks[awayKey]?.choice === 'over'
             const homeSelected = selectedPicks[homeKey]?.choice === 'over'
 
@@ -705,38 +754,20 @@ export default function Home() {
                   <button
                     className={`choice-btn player-button ${awaySelected ? 'choice-btn-selected selected' : ''}`}
                     style={{ width: '100%', marginBottom: '0.5rem', justifyContent: 'space-between', display: 'flex' }}
-                    onClick={() => {
-                      const fakeProp: PlayerProp = {
-                        ...game,
-                        playerName: spreadData.away.team,
-                        displayName: spreadData.away.team,
-                        line: spreadData.away.spread,
-                        category: 'Spread'
-                      }
-                      handleChoice(fakeProp, awaySelected ? 'Over' : 'Over')
-                    }}
+                    onClick={() => handleSpreadSelection(game, 'away')}
                   >
                     <span>{spreadData.away.team}</span>
-                    <span>{spreadData.away.spread > 0 ? '+' : ''}{spreadData.away.spread} ({spreadData.away.odds > 0 ? '+' : ''}{spreadData.away.odds})</span>
+                    <span>{spreadData.away.spread > 0 ? '+' : ''}{spreadData.away.spread}</span>
                   </button>
 
                   {/* Home team spread */}
                   <button
                     className={`choice-btn player-button ${homeSelected ? 'choice-btn-selected selected' : ''}`}
                     style={{ width: '100%', justifyContent: 'space-between', display: 'flex' }}
-                    onClick={() => {
-                      const fakeProp: PlayerProp = {
-                        ...game,
-                        playerName: spreadData.home.team,
-                        displayName: spreadData.home.team,
-                        line: spreadData.home.spread,
-                        category: 'Spread'
-                      }
-                      handleChoice(fakeProp, homeSelected ? 'Over' : 'Over')
-                    }}
+                    onClick={() => handleSpreadSelection(game, 'home')}
                   >
                     <span>{spreadData.home.team}</span>
-                    <span>{spreadData.home.spread > 0 ? '+' : ''}{spreadData.home.spread} ({spreadData.home.odds > 0 ? '+' : ''}{spreadData.home.odds})</span>
+                    <span>{spreadData.home.spread > 0 ? '+' : ''}{spreadData.home.spread}</span>
                   </button>
                 </div>
               </div>
