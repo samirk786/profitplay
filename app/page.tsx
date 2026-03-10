@@ -784,7 +784,9 @@ export default function Home() {
 
       {/* Player Cards / Spread Cards Section */}
       {activeTab === "Board" && (
-      <section className="players-section">
+      <section
+        className={`players-section ${selectedCategory === 'Spread' ? 'players-section-spread' : ''}`}
+      >
         {loadingProps && playerProps.length === 0 ? (
           <div style={{ textAlign: 'center', color: '#FFFFFF', padding: '2rem' }}>
             Loading props...
@@ -826,7 +828,15 @@ export default function Home() {
                     {/* Away team spread */}
                     <button
                       className={`choice-btn player-button ${awaySelected ? 'choice-btn-selected selected' : ''}`}
-                      style={{ flex: 1, justifyContent: 'space-between', display: 'flex' }}
+                      style={{
+                        flex: 1,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        textAlign: 'center',
+                        gap: '0.35rem'
+                      }}
                       onClick={() => handleSpreadSelection(game, 'away')}
                     >
                       <span>{spreadData.away.team}</span>
@@ -836,7 +846,15 @@ export default function Home() {
                     {/* Home team spread */}
                     <button
                       className={`choice-btn player-button ${homeSelected ? 'choice-btn-selected selected' : ''}`}
-                      style={{ flex: 1, justifyContent: 'space-between', display: 'flex' }}
+                      style={{
+                        flex: 1,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        textAlign: 'center',
+                        gap: '0.35rem'
+                      }}
                       onClick={() => handleSpreadSelection(game, 'home')}
                     >
                       <span>{spreadData.home.team}</span>
