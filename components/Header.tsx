@@ -15,7 +15,7 @@ export default function Header() {
       ? 'Account'
       : 'Board'
   const [plan, setPlan] = useState<string | null | undefined>(undefined)
-  const [startingScore, setStartingScore] = useState<number | null | undefined>(undefined)
+  const [equity, setEquity] = useState<number | null | undefined>(undefined)
   const [profileLoading, setProfileLoading] = useState(false)
   const [adminMenuOpen, setAdminMenuOpen] = useState(false)
   const adminMenuRef = useRef<HTMLDivElement>(null)
@@ -48,7 +48,7 @@ export default function Header() {
       fetchUserProfile()
     } else if (status === 'unauthenticated') {
       setPlan(null)
-      setStartingScore(null)
+      setEquity(null)
     }
   }, [session, status])
 
@@ -61,7 +61,7 @@ export default function Header() {
       if (response.ok) {
         const data = await response.json()
         setPlan(data.plan)
-        setStartingScore(data.startingScore)
+        setEquity(data.equity)
       }
     } catch (error) {
       console.error('Error fetching user profile:', error)
@@ -254,7 +254,7 @@ export default function Header() {
         </Link>
       )}
     </nav>
-    {session && typeof startingScore === 'number' && (
+    {session && typeof equity === 'number' && (
       <div style={{
         display: 'flex',
         justifyContent: 'flex-end',
@@ -263,7 +263,7 @@ export default function Header() {
         fontWeight: 700,
         color: 'white'
       }}>
-        Current Score: ${startingScore.toLocaleString()}
+        Current Score: ${equity.toLocaleString()}
       </div>
     )}
     </>

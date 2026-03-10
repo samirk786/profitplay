@@ -35,7 +35,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       plan: subscription?.plan || null,
-      startingScore: challengeAccount?.startBalance || null
+      startingScore: challengeAccount?.startBalance || null,
+      equity: challengeAccount?.equity || null
     })
   } catch (error: any) {
     console.error('User profile fetch error:', error)
