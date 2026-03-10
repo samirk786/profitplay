@@ -48,14 +48,34 @@ export async function GET() {
 
     const activeEventIds = new Set(activeEvents.map(e => e.eventId))
 
-    // Merge: mark which events are currently active
+    // Check which events have player props data in the database (by apiEventId, not team name)
+    const propsMarkets = await prisma.market.findMany({
+      where: {
+        sport: 'NBA',
+        marketType: { in: ['PLAYER_POINTS', 'PLAYER_REBOUNDS', 'PLAYER_ASSISTS'] as any },
+        status: 'UPCOMING'
+      },
+      select: {
+        metadata: true
+      }
+    })
+
+    // Build a set of API event IDs that have props data
+    const eventIdsWithProps = new Set<string>()
+    for (const market of propsMarkets) {
+      const meta = market.metadata as any
+      if (meta?.apiEventId) eventIdsWithProps.add(meta.apiEventId)
+    }
+
+    // Merge: mark which events are currently active and have props
     const events = apiEvents.map(event => ({
       eventId: event.id,
       sport: 'NBA',
       homeTeam: event.home_team,
       awayTeam: event.away_team,
       commenceTime: event.commence_time,
-      isActive: activeEventIds.has(event.id)
+      isActive: activeEventIds.has(event.id),
+      propsAvailable: eventIdsWithProps.has(event.id)
     }))
 
     const activeCount = events.filter(e => e.isActive).length

@@ -10,6 +10,7 @@ interface GameEvent {
   awayTeam: string
   commenceTime: string
   isActive: boolean
+  propsAvailable: boolean
 }
 
 export default function ManageGamesPage() {
@@ -200,6 +201,11 @@ export default function ManageGamesPage() {
                   </div>
                   <p className="text-sm admin-muted mt-1">
                     {formatGameTime(event.commenceTime)}
+                  </p>
+                  <p className="text-xs mt-1" style={{
+                    color: event.propsAvailable ? 'rgb(34, 197, 94)' : '#ffb400'
+                  }}>
+                    {event.propsAvailable ? '✓ Props available' : '✗ Props not yet available'}
                   </p>
                   <p className="text-xs admin-mono mt-0.5">
                     ID: {event.eventId}

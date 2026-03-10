@@ -439,6 +439,10 @@ body {
   margin: 0 auto;
 }
 
+.players-section-spread {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 /* Player Card */
 .player-card {
   background-color: #1E1E1E;

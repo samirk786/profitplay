@@ -226,70 +226,86 @@ export class OddsApiService {
     const processedMarkets: ProcessedMarket[] = []
     const matchup = `${event.away_team} @ ${event.home_team}`
 
-    // Use the first bookmaker only (to avoid duplicates)
-    const bookmaker = event.bookmakers[0]
-    if (!bookmaker) return []
+    if (!event.bookmakers || event.bookmakers.length === 0) return []
 
-    for (const market of bookmaker.markets) {
-      const marketType = this.mapPlayerPropsMarketType(market.key)
+    // Sort bookmakers so DraftKings comes first — its lines get priority.
+    // All other bookmakers fill in players that DraftKings doesn't cover.
+    const sortedBookmakers = [...event.bookmakers].sort((a, b) => {
+      const aIsDK = a.key === 'draftkings' || a.title.toLowerCase().includes('draftkings') ? 0 : 1
+      const bIsDK = b.key === 'draftkings' || b.title.toLowerCase().includes('draftkings') ? 0 : 1
+      return aIsDK - bIsDK
+    })
 
-      // Group outcomes by player (using description field)
-      const playerGroups: Record<string, Array<{
-        name: string
-        description?: string
-        price: number
-        point?: number
-      }>> = {}
+    // Collect player data across ALL bookmakers, keeping the first occurrence per player per market
+    // DraftKings is processed first, so its lines take priority. Other bookmakers fill gaps.
+    const seenPlayers = new Set<string>() // key: "playerName-marketType"
 
-      for (const outcome of market.outcomes) {
-        const playerName = outcome.description || 'Unknown Player'
-        if (!playerGroups[playerName]) {
-          playerGroups[playerName] = []
-        }
-        playerGroups[playerName].push(outcome)
-      }
+    for (const bookmaker of sortedBookmakers) {
+      for (const market of bookmaker.markets) {
+        const marketType = this.mapPlayerPropsMarketType(market.key)
 
-      // Create a ProcessedMarket for each player
-      for (const [playerName, outcomes] of Object.entries(playerGroups)) {
-        const overOutcome = outcomes.find(o => o.name === 'Over')
-        const underOutcome = outcomes.find(o => o.name === 'Under')
+        // Group outcomes by player (using description field)
+        const playerGroups: Record<string, Array<{
+          name: string
+          description?: string
+          price: number
+          point?: number
+        }>> = {}
 
-        if (!overOutcome && !underOutcome) continue
-
-        const processedId = `${event.id}-${playerName.replace(/\s+/g, '_')}-${marketType}`
-
-        processedMarkets.push({
-          eventId: processedId,
-          sport: this.mapSportName(event.sport_title),
-          league: event.sport_title,
-          participants: [playerName, matchup],
-          startTime: new Date(event.commence_time),
-          markets: [{
-            marketType,
-            bookmaker: bookmaker.title,
-            odds: {
-              over: {
-                total: this.preserveDecimal(overOutcome?.point || 0),
-                odds: this.roundOdds(overOutcome?.price || -110)
-              },
-              under: {
-                total: this.preserveDecimal(underOutcome?.point || 0),
-                odds: this.roundOdds(underOutcome?.price || -110)
-              }
-            }
-          }],
-          metadata: {
-            player: playerName,
-            homeTeam: event.home_team,
-            awayTeam: event.away_team,
-            matchup,
-            apiEventId: event.id
+        for (const outcome of market.outcomes) {
+          const playerName = outcome.description || 'Unknown Player'
+          if (!playerGroups[playerName]) {
+            playerGroups[playerName] = []
           }
-        })
+          playerGroups[playerName].push(outcome)
+        }
+
+        // Create a ProcessedMarket for each player (skip if already seen from another bookmaker)
+        for (const [playerName, outcomes] of Object.entries(playerGroups)) {
+          const playerKey = `${playerName}-${marketType}`
+          if (seenPlayers.has(playerKey)) continue
+          seenPlayers.add(playerKey)
+
+          const overOutcome = outcomes.find(o => o.name === 'Over')
+          const underOutcome = outcomes.find(o => o.name === 'Under')
+
+          if (!overOutcome && !underOutcome) continue
+
+          const processedId = `${event.id}-${playerName.replace(/\s+/g, '_')}-${marketType}`
+
+          processedMarkets.push({
+            eventId: processedId,
+            sport: this.mapSportName(event.sport_title),
+            league: event.sport_title,
+            participants: [playerName, matchup],
+            startTime: new Date(event.commence_time),
+            markets: [{
+              marketType,
+              bookmaker: bookmaker.title,
+              odds: {
+                over: {
+                  total: this.preserveDecimal(overOutcome?.point || 0),
+                  odds: this.roundOdds(overOutcome?.price || -110)
+                },
+                under: {
+                  total: this.preserveDecimal(underOutcome?.point || 0),
+                  odds: this.roundOdds(underOutcome?.price || -110)
+                }
+              }
+            }],
+            metadata: {
+              player: playerName,
+              homeTeam: event.home_team,
+              awayTeam: event.away_team,
+              matchup,
+              apiEventId: event.id
+            }
+          })
+        }
       }
     }
 
-    console.log(`Processed ${processedMarkets.length} player props for event ${event.id}`)
+    console.log(`Processed ${processedMarkets.length} player props for event ${event.id} (from ${event.bookmakers.length} bookmakers)`)
     return processedMarkets
   }
 
@@ -301,14 +317,17 @@ export class OddsApiService {
       const participants = [event.away_team, event.home_team]
       const startTime = new Date(event.commence_time)
 
-      // Process each bookmaker's markets
-      const markets = event.bookmakers.flatMap(bookmaker =>
-        bookmaker.markets.map(market => ({
-          marketType: this.mapMarketType(market.key),
-          bookmaker: bookmaker.title,
-          odds: this.processMarketOutcomes(market.outcomes, market.key)
-        }))
-      )
+      // Prefer DraftKings for spread/game lines, fall back to first available bookmaker
+      const bookmaker = event.bookmakers.find(b =>
+        b.key === 'draftkings' || b.title.toLowerCase().includes('draftkings')
+      ) || event.bookmakers[0]
+      const markets = bookmaker
+        ? bookmaker.markets.map(market => ({
+            marketType: this.mapMarketType(market.key),
+            bookmaker: bookmaker.title,
+            odds: this.processMarketOutcomes(market.outcomes, market.key)
+          }))
+        : []
 
       return {
         eventId: event.id,
