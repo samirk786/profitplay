@@ -737,7 +737,7 @@ export default function Home() {
             const homeSelected = selectedPicks[homeKey]?.choice === 'over'
 
             return (
-              <div key={game.id} className="player-card" style={{ minWidth: '300px' }}>
+              <div key={game.id} className="player-card">
                 <div className="player-card-body" style={{ padding: '1rem' }}>
                   <div className="player-matchup-row" style={{ marginBottom: '0.75rem' }}>
                     <span className="player-matchup">{game.matchup}</span>
@@ -748,27 +748,27 @@ export default function Home() {
                       </>
                     )}
                   </div>
-                  <div className="player-points-label" style={{ marginBottom: '0.75rem' }}>Spread</div>
+                  <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
+                    {/* Away team spread */}
+                    <button
+                      className={`choice-btn player-button ${awaySelected ? 'choice-btn-selected selected' : ''}`}
+                      style={{ flex: 1, justifyContent: 'space-between', display: 'flex' }}
+                      onClick={() => handleSpreadSelection(game, 'away')}
+                    >
+                      <span>{spreadData.away.team}</span>
+                      <span>{spreadData.away.spread > 0 ? '+' : ''}{spreadData.away.spread}</span>
+                    </button>
 
-                  {/* Away team spread */}
-                  <button
-                    className={`choice-btn player-button ${awaySelected ? 'choice-btn-selected selected' : ''}`}
-                    style={{ width: '100%', marginBottom: '0.5rem', justifyContent: 'space-between', display: 'flex' }}
-                    onClick={() => handleSpreadSelection(game, 'away')}
-                  >
-                    <span>{spreadData.away.team}</span>
-                    <span>{spreadData.away.spread > 0 ? '+' : ''}{spreadData.away.spread}</span>
-                  </button>
-
-                  {/* Home team spread */}
-                  <button
-                    className={`choice-btn player-button ${homeSelected ? 'choice-btn-selected selected' : ''}`}
-                    style={{ width: '100%', justifyContent: 'space-between', display: 'flex' }}
-                    onClick={() => handleSpreadSelection(game, 'home')}
-                  >
-                    <span>{spreadData.home.team}</span>
-                    <span>{spreadData.home.spread > 0 ? '+' : ''}{spreadData.home.spread}</span>
-                  </button>
+                    {/* Home team spread */}
+                    <button
+                      className={`choice-btn player-button ${homeSelected ? 'choice-btn-selected selected' : ''}`}
+                      style={{ flex: 1, justifyContent: 'space-between', display: 'flex' }}
+                      onClick={() => handleSpreadSelection(game, 'home')}
+                    >
+                      <span>{spreadData.home.team}</span>
+                      <span>{spreadData.home.spread > 0 ? '+' : ''}{spreadData.home.spread}</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             )
