@@ -19,6 +19,13 @@ export async function GET() {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
+  if (!process.env.DATABASE_URL) {
+    return NextResponse.json(
+      { error: 'DATABASE_URL is not configured on the server.' },
+      { status: 500 }
+    )
+  }
+
   try {
     const [
       totalUsers,

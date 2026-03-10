@@ -25,6 +25,13 @@ export async function GET() {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
+  if (!process.env.ODDS_API_KEY) {
+    return NextResponse.json(
+      { error: 'ODDS_API_KEY is not configured on the server.' },
+      { status: 500 }
+    )
+  }
+
   try {
     // Auto-deactivate games whose date has passed (midnight ET)
     await autoDeactivateExpiredGames()

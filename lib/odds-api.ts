@@ -69,6 +69,9 @@ export class OddsApiService {
 
   constructor() {
     this.apiKey = process.env.ODDS_API_KEY || ''
+  }
+
+  private assertApiKey() {
     if (!this.apiKey) {
       throw new Error('ODDS_API_KEY environment variable is required')
     }
@@ -79,6 +82,7 @@ export class OddsApiService {
    */
   async fetchEvents(sport: string): Promise<OddsApiEvent[]> {
     try {
+      this.assertApiKey()
       const params = new URLSearchParams({
         apiKey: this.apiKey,
         dateFormat: 'iso'
@@ -104,6 +108,7 @@ export class OddsApiService {
    */
   async fetchOdds(sport: string, markets: string[] = ['h2h', 'spreads', 'totals']): Promise<ProcessedMarket[]> {
     try {
+      this.assertApiKey()
       const params = new URLSearchParams({
         apiKey: this.apiKey,
         regions: 'us',
@@ -139,6 +144,7 @@ export class OddsApiService {
     markets: string[] = ['player_points', 'player_rebounds', 'player_assists']
   ): Promise<ProcessedMarket[]> {
     try {
+      this.assertApiKey()
       const params = new URLSearchParams({
         apiKey: this.apiKey,
         regions: 'us',
@@ -177,6 +183,7 @@ export class OddsApiService {
    */
   async fetchScores(sport: string, daysFrom = 3): Promise<OddsApiScoreResponse[]> {
     try {
+      this.assertApiKey()
       const params = new URLSearchParams({
         apiKey: this.apiKey,
         daysFrom: String(daysFrom),
@@ -200,6 +207,7 @@ export class OddsApiService {
    */
   async fetchSports(): Promise<Array<{ key: string; title: string; active: boolean }>> {
     try {
+      this.assertApiKey()
       const response = await fetch(`${this.baseUrl}/sports/?apiKey=${this.apiKey}`)
 
       if (!response.ok) {
@@ -472,6 +480,7 @@ export class OddsApiService {
    */
   async checkUsage(): Promise<{ used: number; remaining: number }> {
     try {
+      this.assertApiKey()
       const response = await fetch(`${this.baseUrl}/sports/?apiKey=${this.apiKey}`)
 
       if (!response.ok) {
