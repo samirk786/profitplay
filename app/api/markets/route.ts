@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/prisma'
 import { oddsApiService } from '@/lib/odds-api'
+import { autoDeactivateExpiredGames } from '@/lib/active-events'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,6 +40,9 @@ function preserveDecimal(value: number): number {
 
 export async function GET(request: NextRequest) {
   try {
+    // Auto-deactivate games whose date has passed (midnight ET)
+    await autoDeactivateExpiredGames()
+
     const searchParams = request.nextUrl.searchParams
     const sport = searchParams.get('sport') || 'NBA'
     const marketType = searchParams.get('marketType')
@@ -163,12 +167,11 @@ async function handleSpreadRequest(
     orderBy: { startTime: 'asc' }
   })
 
-  // Filter to only active event teams
-  const activeTeams = new Set(
-    activeEvents.flatMap(e => [e.homeTeam, e.awayTeam])
-  )
+  // Filter to only markets that match an active event (BOTH teams must match)
   markets = markets.filter(m =>
-    m.participants.some(p => activeTeams.has(p))
+    activeEvents.some(ae =>
+      m.participants.includes(ae.homeTeam) && m.participants.includes(ae.awayTeam)
+    )
   )
 
   if (refresh) {
@@ -178,9 +181,9 @@ async function handleSpreadRequest(
 
       // Filter to active events and sync to database
       for (const event of oddsData) {
-        // Check if this event matches any active event (by team name matching)
+        // Check if this event matches any active event (BOTH teams must match)
         const isActiveEvent = activeEvents.some(ae =>
-          (event.participants.includes(ae.homeTeam) || event.participants.includes(ae.awayTeam))
+          event.participants.includes(ae.homeTeam) && event.participants.includes(ae.awayTeam)
         )
 
         if (!isActiveEvent) continue
@@ -237,9 +240,11 @@ async function handleSpreadRequest(
         orderBy: { startTime: 'asc' }
       })
 
-      // Filter to active events
+      // Filter to active events (BOTH teams must match)
       markets = markets.filter(m =>
-        m.participants.some(p => activeTeams.has(p))
+        activeEvents.some(ae =>
+          m.participants.includes(ae.homeTeam) && m.participants.includes(ae.awayTeam)
+        )
       )
     } catch (error) {
       console.warn('Failed to fetch spreads from API:', error)
@@ -286,14 +291,14 @@ async function handlePlayerPropsRequest(
     orderBy: { startTime: 'asc' }
   })
 
-  // Filter to only active event matchups
-  const activeTeams = new Set(
-    activeEvents.flatMap(e => [e.homeTeam, e.awayTeam])
-  )
+  // Filter to only active event matchups using apiEventId for precision
+  const activeEventIdSet = new Set(activeEvents.map(e => e.eventId))
   markets = markets.filter(m => {
-    const matchup = (m.metadata as any)?.matchup || m.participants[1] || ''
+    const apiEventId = (m.metadata as any)?.apiEventId
+    if (apiEventId) return activeEventIdSet.has(apiEventId)
+    // Fallback: both teams must match an active event
     return activeEvents.some(ae =>
-      matchup.includes(ae.homeTeam) || matchup.includes(ae.awayTeam)
+      m.participants.includes(ae.homeTeam) && m.participants.includes(ae.awayTeam)
     )
   })
 
@@ -407,19 +412,21 @@ async function handlePlayerPropsRequest(
       orderBy: { startTime: 'asc' }
     })
 
-    // Filter to active events
+    // Filter to active events using apiEventId
     markets = markets.filter(m => {
-      const matchup = (m.metadata as any)?.matchup || m.participants[1] || ''
+      const apiEventId = (m.metadata as any)?.apiEventId
+      if (apiEventId) return activeEventIdSet.has(apiEventId)
       return activeEvents.some(ae =>
-        matchup.includes(ae.homeTeam) || matchup.includes(ae.awayTeam)
+        m.participants.includes(ae.homeTeam) && m.participants.includes(ae.awayTeam)
       )
     })
   } else {
     // On non-refresh loads, check which active games have data in the DB
     for (const ae of activeEvents) {
       const hasData = markets.some(m => {
-        const matchup = (m.metadata as any)?.matchup || m.participants[1] || ''
-        return matchup.includes(ae.homeTeam) || matchup.includes(ae.awayTeam)
+        const apiEventId = (m.metadata as any)?.apiEventId
+        if (apiEventId) return apiEventId === ae.eventId
+        return m.participants.includes(ae.homeTeam) && m.participants.includes(ae.awayTeam)
       })
       if (!hasData) {
         unavailableGames.push(`${ae.awayTeam} @ ${ae.homeTeam}`)

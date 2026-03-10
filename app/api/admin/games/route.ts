@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/prisma'
 import { oddsApiService } from '@/lib/odds-api'
+import { autoDeactivateExpiredGames } from '@/lib/active-events'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,6 +26,9 @@ export async function GET() {
   }
 
   try {
+    // Auto-deactivate games whose date has passed (midnight ET)
+    await autoDeactivateExpiredGames()
+
     // Fetch upcoming NBA events from the Odds API (free)
     let apiEvents: Array<{
       id: string
@@ -104,6 +108,9 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    // Auto-deactivate expired games before checking max-2 limit
+    await autoDeactivateExpiredGames()
+
     const { eventId, sport, homeTeam, awayTeam, commenceTime, isActive } = await request.json()
 
     if (!eventId) {
