@@ -56,14 +56,18 @@ export async function autoDeactivateExpiredGames(): Promise<number> {
     data: { isActive: false },
   })
 
-  // Mark ALL stale UPCOMING markets as FINISHED if their startTime has passed
-  // This catches any old markets that weren't cleaned up previously,
-  // regardless of which ActiveEvent they belonged to
-  const now = new Date()
+  // Mark stale UPCOMING markets as FINISHED, but ONLY for past days.
+  // We must NOT mark today's live game markets as FINISHED (their startTime
+  // is in the past because the game already started, but they're still active).
+  // Compute start-of-today in ET as a UTC cutoff: use 5 AM UTC which is
+  // midnight EST (conservative — EDT would be 4 AM UTC, so 5 AM is safe).
+  const todayParts = todayET.split('-').map(Number)
+  const startOfTodayUTC = new Date(Date.UTC(todayParts[0], todayParts[1] - 1, todayParts[2], 5, 0, 0))
+
   await prisma.market.updateMany({
     where: {
       status: 'UPCOMING',
-      startTime: { lt: now },
+      startTime: { lt: startOfTodayUTC },
     },
     data: { status: 'FINISHED' },
   })

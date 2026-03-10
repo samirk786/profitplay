@@ -236,6 +236,18 @@ export class OddsApiService {
       return aIsDK - bIsDK
     })
 
+    // Log bookmaker breakdown for diagnostics
+    const hasDK = sortedBookmakers.some(b => b.key === 'draftkings' || b.title.toLowerCase().includes('draftkings'))
+    console.log(`  Bookmakers (${sortedBookmakers.length}): ${sortedBookmakers.map(b => b.key).join(', ')}${hasDK ? ' [DraftKings found]' : ' [No DraftKings]'}`)
+
+    // Log raw player counts per bookmaker per market type
+    for (const bk of sortedBookmakers) {
+      for (const mkt of bk.markets) {
+        const playerNames = new Set(mkt.outcomes.map(o => o.description).filter(Boolean))
+        console.log(`    ${bk.key} → ${mkt.key}: ${playerNames.size} players`)
+      }
+    }
+
     // Collect player data across ALL bookmakers, keeping the first occurrence per player per market
     // DraftKings is processed first, so its lines take priority. Other bookmakers fill gaps.
     const seenPlayers = new Set<string>() // key: "playerName-marketType"
