@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Header from '@/components/Header'
+import rosterMetaByPlayer from '@/lib/profitplay_nba_players_by_name_enriched.json'
 
 // Helper function to format name as "FirstInitial. LastName"
 const getShortName = (name: string) => {
@@ -126,6 +127,130 @@ const getTeamColor = (team?: string | null) => {
     .replace(/\./g, '')
     .replace(/\s+/g, ' ')
   return TEAM_COLORS[key] || null
+}
+
+const normalizePlayerName = (name?: string | null) => {
+  if (!name) return ''
+  let rawName = name
+  if (rawName.includes(',')) {
+    const [last, first] = rawName.split(',', 2)
+    rawName = `${first} ${last}`.trim()
+  }
+  return rawName
+    .toLowerCase()
+    .replace(/\./g, '')
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\b(jr|sr|ii|iii|iv|v)\b/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+type PlayerMeta = {
+  id?: string
+  name?: string
+  normalized_name?: string
+  team?: string
+  team_abbreviation?: string
+  team_id?: string
+  jersey_number?: string
+  position?: string
+  height?: string
+  weight?: string
+  age?: number
+  active?: boolean
+  source?: string
+  aliases?: string[]
+}
+
+const rosterMetaEntries = Object.entries(rosterMetaByPlayer as Record<string, PlayerMeta>)
+
+const rosterTeamByName = rosterMetaEntries.reduce<Record<string, string>>((acc, [playerName, data]) => {
+  const key = normalizePlayerName(playerName)
+  if (key && data?.team) {
+    acc[key] = data.team
+  }
+  return acc
+}, {})
+
+const lastNameCounts = rosterMetaEntries.reduce<Record<string, number>>((acc, [playerName]) => {
+  const parts = normalizePlayerName(playerName).split(' ')
+  const lastName = parts[parts.length - 1]
+  if (lastName) {
+    acc[lastName] = (acc[lastName] || 0) + 1
+  }
+  return acc
+}, {})
+
+const rosterTeamByLastName = rosterMetaEntries.reduce<Record<string, string>>((acc, [playerName, data]) => {
+  const parts = normalizePlayerName(playerName).split(' ')
+  const lastName = parts[parts.length - 1]
+  if (lastName && data?.team && lastNameCounts[lastName] === 1) {
+    acc[lastName] = data.team
+  }
+  return acc
+}, {})
+
+const rosterMetaByName = rosterMetaEntries.reduce<Record<string, PlayerMeta>>((acc, [playerName, data]) => {
+  const key = normalizePlayerName(playerName)
+  if (key && data) {
+    acc[key] = data
+  }
+  return acc
+}, {})
+
+const getRosterTeamForPlayer = (name?: string | null) => {
+  const key = normalizePlayerName(name)
+  if (!key) return null
+  if (rosterTeamByName[key]) return rosterTeamByName[key]
+
+  const lastName = key.split(' ').slice(-1)[0]
+  if (lastName && rosterTeamByLastName[lastName]) {
+    return rosterTeamByLastName[lastName]
+  }
+
+  return null
+}
+
+const getPlayerInfoBlurb = (name?: string | null) => {
+  const key = normalizePlayerName(name)
+  if (!key) return 'Player info unavailable'
+  const meta = rosterMetaByName[key]
+  if (!meta) return 'Player info unavailable'
+
+  const entries = Object.entries(meta).filter(([, value]) => {
+    if (value == null) return false
+    if (Array.isArray(value)) return value.length > 0
+    return String(value).trim() !== ''
+  })
+  if (entries.length === 0) return 'Player info unavailable'
+
+  const formatKey = (rawKey: string) =>
+    rawKey
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, (char) => char.toUpperCase())
+
+  const formatValue = (value: PlayerMeta[keyof PlayerMeta]) => {
+    if (Array.isArray(value)) return value.join(', ')
+    if (typeof value === 'boolean') return value ? 'Yes' : 'No'
+    return String(value)
+  }
+
+  const preferredOrder = ['team', 'position', 'height', 'weight']
+
+  const orderIndex = preferredOrder.reduce<Record<string, number>>((acc, field, index) => {
+    acc[field] = index
+    return acc
+  }, {})
+
+  return entries
+    .filter(([rawKey]) => preferredOrder.includes(rawKey))
+    .sort(([a], [b]) => {
+      const aIndex = orderIndex[a] ?? Number.MAX_SAFE_INTEGER
+      const bIndex = orderIndex[b] ?? Number.MAX_SAFE_INTEGER
+      return aIndex - bIndex || a.localeCompare(b)
+    })
+    .map(([rawKey, value]) => `${formatKey(rawKey)}: ${formatValue(value)}`)
+    .join(' • ')
 }
 
 export default function Home() {
@@ -284,6 +409,7 @@ export default function Home() {
               const metadata = market._metadata
               const odds = market.odds
               const line = odds?.over?.total || odds?.under?.total || 0
+              const rosterTeam = getRosterTeamForPlayer(metadata?.player || market.participants[0])
 
               const gameDateTime = market.startTime
                 ? new Date(market.startTime).toLocaleString('en-US', {
@@ -302,7 +428,7 @@ export default function Home() {
                 category: selectedCategory,
                 sport: market.sport,
                 jerseyNumber: metadata?.jersey ?? null,
-                team: metadata?.team || metadata?.homeTeam || metadata?.awayTeam || null,
+                team: metadata?.team || rosterTeam || null,
                 matchup: metadata?.matchup || `${market.participants[0]} @ ${market.participants[1] || ''}`,
                 gameDateTime: gameDateTime
               }
@@ -882,6 +1008,14 @@ export default function Home() {
                   className="player-card-top"
                   style={{ position: 'relative', justifyContent: 'center' }}
                 >
+                  <span
+                    className="info-badge"
+                    role="img"
+                    aria-label="Player info"
+                    data-tooltip={getPlayerInfoBlurb(player.playerName)}
+                  >
+                    i
+                  </span>
                   <button
                     className={`like-btn ${likedPicks[pickKey] ? 'liked' : ''}`}
                     onClick={() => toggleLike(player)}
