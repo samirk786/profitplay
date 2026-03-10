@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Header from '@/components/Header'
-import JerseyIcon from '@/components/JerseyIcon'
 
 // Helper function to format name as "FirstInitial. LastName"
 const getShortName = (name: string) => {
@@ -52,6 +51,81 @@ const getPropKey = (sport: string, playerName: string, category: string) => {
 
 const getSpreadKey = (gameId: string, teamName: string) => {
   return `SPREAD-${gameId}-${teamName}`
+}
+
+const TEAM_COLORS: Record<string, string> = {
+  'atlanta hawks': '#E03A3E',
+  atl: '#E03A3E',
+  'boston celtics': '#007A33',
+  bos: '#007A33',
+  'brooklyn nets': '#000000',
+  bkn: '#000000',
+  'new jersey nets': '#000000',
+  'charlotte hornets': '#00788C',
+  cha: '#00788C',
+  'chicago bulls': '#CE1141',
+  chi: '#CE1141',
+  'cleveland cavaliers': '#6F263D',
+  cle: '#6F263D',
+  'dallas mavericks': '#00538C',
+  dal: '#00538C',
+  'denver nuggets': '#0E2240',
+  den: '#0E2240',
+  'detroit pistons': '#C8102E',
+  det: '#C8102E',
+  'golden state warriors': '#1D428A',
+  gsw: '#1D428A',
+  'houston rockets': '#CE1141',
+  hou: '#CE1141',
+  'indiana pacers': '#002D62',
+  ind: '#002D62',
+  'la clippers': '#C8102E',
+  'los angeles clippers': '#C8102E',
+  lac: '#C8102E',
+  'los angeles lakers': '#552583',
+  lal: '#552583',
+  'memphis grizzlies': '#5D76A9',
+  mem: '#5D76A9',
+  'miami heat': '#98002E',
+  mia: '#98002E',
+  'milwaukee bucks': '#00471B',
+  mil: '#00471B',
+  'minnesota timberwolves': '#0C2340',
+  min: '#0C2340',
+  'new orleans pelicans': '#0C2340',
+  nop: '#0C2340',
+  'new york knicks': '#006BB6',
+  nyk: '#006BB6',
+  'oklahoma city thunder': '#007AC1',
+  okc: '#007AC1',
+  'orlando magic': '#0077C0',
+  orl: '#0077C0',
+  'philadelphia 76ers': '#006BB6',
+  phi: '#006BB6',
+  'phoenix suns': '#1D1160',
+  phx: '#1D1160',
+  'portland trail blazers': '#E03A3E',
+  por: '#E03A3E',
+  'sacramento kings': '#5A2D81',
+  sac: '#5A2D81',
+  'san antonio spurs': '#000000',
+  sas: '#000000',
+  'toronto raptors': '#CE1141',
+  tor: '#CE1141',
+  'utah jazz': '#002B5C',
+  uta: '#002B5C',
+  'washington wizards': '#002B5C',
+  was: '#002B5C'
+}
+
+const getTeamColor = (team?: string | null) => {
+  if (!team) return null
+  const key = team
+    .trim()
+    .toLowerCase()
+    .replace(/\./g, '')
+    .replace(/\s+/g, ' ')
+  return TEAM_COLORS[key] || null
 }
 
 export default function Home() {
@@ -228,7 +302,7 @@ export default function Home() {
                 category: selectedCategory,
                 sport: market.sport,
                 jerseyNumber: metadata?.jersey ?? null,
-                team: metadata?.team || market.participants?.[1] || null,
+                team: metadata?.team || metadata?.homeTeam || metadata?.awayTeam || null,
                 matchup: metadata?.matchup || `${market.participants[0]} @ ${market.participants[1] || ''}`,
                 gameDateTime: gameDateTime
               }
@@ -778,10 +852,18 @@ export default function Home() {
           visiblePlayers.map((player) => {
             const pickKey = getPropKey(player.sport, player.playerName, player.category)
             const selectedChoice = selectedPicks[pickKey]?.choice
+            const teamColor = getTeamColor(player.team)
 
             return (
-              <div key={player.id} className="player-card">
-                <div className="player-card-top" style={{ position: 'relative' }}>
+              <div
+                key={player.id}
+                className="player-card"
+                style={{ ['--team-color' as any]: teamColor || '#1e1e1e' }}
+              >
+                <div
+                  className="player-card-top"
+                  style={{ position: 'relative', justifyContent: 'center' }}
+                >
                   <button
                     className={`like-btn ${likedPicks[pickKey] ? 'liked' : ''}`}
                     onClick={() => toggleLike(player)}
@@ -790,9 +872,6 @@ export default function Home() {
                     ♥
                   </button>
                   <div className="player-name">{player.displayName}</div>
-                  <div className="player-jersey-wrapper">
-                    <JerseyIcon number={player.jerseyNumber} />
-                  </div>
                 </div>
                 <div className="player-card-body">
                   <div className="player-line-value">{player.line}</div>
