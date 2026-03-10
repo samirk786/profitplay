@@ -131,6 +131,7 @@ const getTeamColor = (team?: string | null) => {
 export default function Home() {
   const { data: session } = useSession()
   const router = useRouter()
+  const isAdminUser = session?.user?.role === 'ADMIN' && session?.user?.email === 'admin@profitplay.com'
 
   // State to track selected picks across sports/categories
   const [selectedPicks, setSelectedPicks] = useState<Record<string, SelectedPick>>({})
@@ -235,8 +236,7 @@ export default function Home() {
       const data = await response.json()
 
       if (data.message && data.markets?.length === 0) {
-        const isAdmin = session?.user?.role === 'ADMIN'
-        const message = isAdmin && data.adminMessage ? data.adminMessage : data.message
+        const message = isAdminUser && data.adminMessage ? data.adminMessage : data.message
         setPropsError(message)
         setPlayerProps([])
         return
@@ -321,16 +321,14 @@ export default function Home() {
       setLoadingProps(false)
       setRefreshing(false)
     }
-  }, [selectedSport, selectedCategory])
+  }, [selectedSport, selectedCategory, isAdminUser])
 
   useEffect(() => {
     loadProps()
   }, [loadProps])
 
-  const isAdmin = session?.user?.role === 'ADMIN' && session?.user?.email === 'admin@profitplay.com'
-
   const handleRefreshOdds = async () => {
-    if (!isAdmin) return
+    if (!isAdminUser) return
     setRefreshing(true)
     await loadProps(true)
   }
@@ -640,7 +638,7 @@ export default function Home() {
               {category}
             </button>
           ))}
-          {isAdmin && (
+          {isAdminUser && (
             <button
               className="category-pill"
               style={{ marginLeft: 'auto', fontSize: '0.75rem', opacity: refreshing ? 0.5 : 1 }}
@@ -797,7 +795,9 @@ export default function Home() {
           </div>
         ) : visiblePlayers.length === 0 ? (
           <div className="no-props-message">
-            No Props Available. Select games in Admin &gt; Manage Games, then click Refresh Odds.
+            {isAdminUser
+              ? 'No Props Available. Select games in Admin > Manage Games, then click Refresh Odds.'
+              : 'No lines available right now. Check back soon!'}
           </div>
         ) : selectedCategory === 'Spread' ? (
           /* Spread cards - show game-level spread lines */
