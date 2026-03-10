@@ -65,10 +65,14 @@ export async function GET(request: NextRequest) {
 
     const isPlayerPropsRequest = marketType && marketType.startsWith('PLAYER_')
 
+    let unavailableGames: string[] = []
+
     if (marketType === 'SPREAD') {
       markets = await handleSpreadRequest(activeEvents, refresh)
     } else if (isPlayerPropsRequest && marketType) {
-      markets = await handlePlayerPropsRequest(activeEvents, marketType, refresh)
+      const result = await handlePlayerPropsRequest(activeEvents, marketType, refresh)
+      markets = result.markets
+      unavailableGames = result.unavailableGames
     } else {
       // Default: return all cached markets for active events
       markets = await fetchCachedMarkets(sport, marketType, activeEventIds)
@@ -119,7 +123,10 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    return NextResponse.json({ markets: formattedMarkets })
+    return NextResponse.json({
+      markets: formattedMarkets,
+      ...(unavailableGames.length > 0 && { unavailableGames })
+    })
   } catch (error) {
     console.error('Markets fetch error:', error)
     return NextResponse.json(
@@ -164,12 +171,7 @@ async function handleSpreadRequest(
     m.participants.some(p => activeTeams.has(p))
   )
 
-  const hasRecentData = markets.length > 0 && markets.some(m =>
-    m.oddsSnapshots.length > 0 &&
-    new Date(m.oddsSnapshots[0].ts).getTime() > Date.now() - 60 * 60 * 1000 // Last hour
-  )
-
-  if (refresh || !hasRecentData) {
+  if (refresh) {
     try {
       console.log('Fetching spreads from Odds API (1 credit)...')
       const oddsData = await oddsApiService.fetchOdds('basketball_nba', ['spreads'])
@@ -239,19 +241,19 @@ async function handleSpreadRequest(
       markets = markets.filter(m =>
         m.participants.some(p => activeTeams.has(p))
       )
-
-      // Deduplicate: keep only one spread market per game (first bookmaker)
-      const seenGames = new Set<string>()
-      markets = markets.filter(m => {
-        const gameKey = m.participants.sort().join('-')
-        if (seenGames.has(gameKey)) return false
-        seenGames.add(gameKey)
-        return true
-      })
     } catch (error) {
       console.warn('Failed to fetch spreads from API:', error)
     }
   }
+
+  // Always deduplicate: keep only one spread market per game (first bookmaker)
+  const seenGames = new Set<string>()
+  markets = markets.filter(m => {
+    const gameKey = [...m.participants].sort().join('-')
+    if (seenGames.has(gameKey)) return false
+    seenGames.add(gameKey)
+    return true
+  })
 
   return markets
 }
@@ -259,12 +261,15 @@ async function handleSpreadRequest(
 /**
  * Handle player props requests using the per-event endpoint.
  * Costs 1 credit per event (all requested markets in one call per event).
+ * Returns markets and a list of games whose props aren't available yet.
  */
 async function handlePlayerPropsRequest(
   activeEvents: Array<{ eventId: string; homeTeam: string; awayTeam: string; commenceTime: Date }>,
   marketType: string,
   refresh: boolean
-): Promise<any[]> {
+): Promise<{ markets: any[]; unavailableGames: string[] }> {
+  const unavailableGames: string[] = []
+
   // Try database first
   let markets = await prisma.market.findMany({
     where: {
@@ -292,21 +297,18 @@ async function handlePlayerPropsRequest(
     )
   })
 
-  const hasRecentData = markets.length > 0 && markets.some(m =>
-    m.oddsSnapshots.length > 0 &&
-    new Date(m.oddsSnapshots[0].ts).getTime() > Date.now() - 60 * 60 * 1000
-  )
-
-  if (refresh || !hasRecentData) {
+  if (refresh) {
     const apiMarketKey = MARKET_TYPE_TO_API_KEY[marketType]
     if (!apiMarketKey) {
       console.warn(`No API market key mapping for ${marketType}`)
-      return markets
+      return { markets, unavailableGames }
     }
 
-    try {
-      // Fetch player props for each active event (1 credit per event)
-      for (const activeEvent of activeEvents) {
+    const eventsWithData = new Set<string>()
+
+    // Fetch player props for each active event (1 credit per event)
+    for (const activeEvent of activeEvents) {
+      try {
         console.log(`Fetching ${apiMarketKey} for event ${activeEvent.eventId} (1 credit)...`)
 
         const playerProps = await oddsApiService.fetchPlayerPropsForEvent(
@@ -316,9 +318,11 @@ async function handlePlayerPropsRequest(
         )
 
         if (playerProps.length === 0) {
-          console.log(`No ${apiMarketKey} props returned for event ${activeEvent.eventId}`)
+          console.log(`No ${apiMarketKey} props returned for event ${activeEvent.eventId} (${activeEvent.awayTeam} @ ${activeEvent.homeTeam})`)
           continue
         }
+
+        eventsWithData.add(activeEvent.eventId)
 
         // Sync each player prop to database
         for (const prop of playerProps) {
@@ -374,37 +378,56 @@ async function handlePlayerPropsRequest(
         }
 
         console.log(`Synced ${playerProps.length} ${apiMarketKey} props for event ${activeEvent.eventId}`)
+      } catch (error) {
+        console.warn(`Failed to fetch ${apiMarketKey} for event ${activeEvent.eventId}:`, error)
+        // Continue to next event instead of aborting all
       }
+    }
 
-      // Re-query from database after sync
-      markets = await prisma.market.findMany({
-        where: {
-          sport: 'NBA',
-          marketType: marketType as any,
-          status: 'UPCOMING'
-        },
-        include: {
-          oddsSnapshots: {
-            orderBy: { ts: 'desc' },
-            take: 1
-          }
-        },
-        orderBy: { startTime: 'asc' }
-      })
+    // Track which active games didn't return props data
+    for (const activeEvent of activeEvents) {
+      if (!eventsWithData.has(activeEvent.eventId)) {
+        unavailableGames.push(`${activeEvent.awayTeam} @ ${activeEvent.homeTeam}`)
+      }
+    }
 
-      // Filter to active events
-      markets = markets.filter(m => {
+    // Re-query from database after sync
+    markets = await prisma.market.findMany({
+      where: {
+        sport: 'NBA',
+        marketType: marketType as any,
+        status: 'UPCOMING'
+      },
+      include: {
+        oddsSnapshots: {
+          orderBy: { ts: 'desc' },
+          take: 1
+        }
+      },
+      orderBy: { startTime: 'asc' }
+    })
+
+    // Filter to active events
+    markets = markets.filter(m => {
+      const matchup = (m.metadata as any)?.matchup || m.participants[1] || ''
+      return activeEvents.some(ae =>
+        matchup.includes(ae.homeTeam) || matchup.includes(ae.awayTeam)
+      )
+    })
+  } else {
+    // On non-refresh loads, check which active games have data in the DB
+    for (const ae of activeEvents) {
+      const hasData = markets.some(m => {
         const matchup = (m.metadata as any)?.matchup || m.participants[1] || ''
-        return activeEvents.some(ae =>
-          matchup.includes(ae.homeTeam) || matchup.includes(ae.awayTeam)
-        )
+        return matchup.includes(ae.homeTeam) || matchup.includes(ae.awayTeam)
       })
-    } catch (error) {
-      console.warn(`Failed to fetch ${marketType} from API:`, error)
+      if (!hasData) {
+        unavailableGames.push(`${ae.awayTeam} @ ${ae.homeTeam}`)
+      }
     }
   }
 
-  return markets
+  return { markets, unavailableGames }
 }
 
 /**
