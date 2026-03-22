@@ -149,8 +149,8 @@ export async function validateBetPlacement(
     errors.push('Challenge account is not active')
   }
 
-  // 2. Check max stake percentage
-  const maxStake = challengeAccount.equity * (ruleset.maxStakePct / 100)
+  // 2. Check max stake percentage (based on starting balance, not current equity)
+  const maxStake = challengeAccount.startBalance * (ruleset.maxStakePct / 100)
   if (stake > maxStake) {
     errors.push(`Stake exceeds maximum allowed: $${stake.toFixed(2)} > $${maxStake.toFixed(2)}`)
   }

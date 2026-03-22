@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Header from '@/components/Header'
-import JerseyIcon from '@/components/JerseyIcon'
 
 interface Bet {
   id: string
@@ -169,7 +168,20 @@ export default function BetsPage() {
     let actualValue: number | null = null
     let statType = ''
 
-    if (bet.market.marketType.includes('PLAYER_') || bet.market.marketType === 'PROPS') {
+    if (bet.market.marketType === 'SPREAD') {
+      // For spreads, the selection stored is the team name
+      // lineJSON has { home: { spread, odds }, away: { spread, odds } }
+      const selection = bet.selection
+      if (lineJSON.home && lineJSON.away) {
+        // Match by team name in participants
+        if (playerName === bet.market.participants?.[1]) {
+          pickValue = lineJSON.home.spread
+        } else {
+          pickValue = lineJSON.away.spread
+        }
+      }
+      statType = ''
+    } else if (bet.market.marketType.includes('PLAYER_') || bet.market.marketType === 'PROPS') {
       // For player props, extract the total/line value
       if (lineJSON.over) {
         pickValue = lineJSON.over.total || lineJSON.over.line || null
@@ -228,9 +240,19 @@ export default function BetsPage() {
   const getOutcomeText = (group: Bet[]) => {
     const firstBet = group[0]
     return {
-      wager: `$${firstBet.stake.toFixed(2)} wager`,
-      potential: `$${firstBet.potentialPayout.toFixed(2)} potential`
+      wager: `$${firstBet.stake.toFixed(2)}`,
+      potential: `$${firstBet.potentialPayout.toFixed(2)}`
     }
+  }
+
+  const getParlayStatus = (group: Bet[]) => {
+    const hasLost = group.some(b => b.status === 'LOST')
+    const allWon = group.every(b => b.status === 'WON')
+    const allSettled = group.every(b => b.status === 'WON' || b.status === 'LOST')
+    if (hasLost) return 'LOST'
+    if (allWon) return 'WON'
+    if (allSettled) return 'LOST'
+    return 'PENDING'
   }
 
 
@@ -299,335 +321,134 @@ export default function BetsPage() {
               const firstBet = betGroup[0]
               const isParlay = betGroup.length > 1 && firstBet.parlayId
               const outcome = getOutcomeText(betGroup)
-              
+              const parlayStatus = getParlayStatus(betGroup)
+              const parlayWon = parlayStatus === 'WON'
+              const parlayLost = parlayStatus === 'LOST'
+
               return (
                 <div
                   key={isParlay ? firstBet.parlayId : firstBet.id}
                   style={{
                     backgroundColor: '#121212',
-                    borderRadius: '16px',
-                    padding: '1.5rem',
+                    borderRadius: '12px',
+                    padding: '1rem 1.25rem',
                     border: '1px solid #333'
                   }}
                 >
-                  {/* Top Section - Outcome, Multiplier, Picks */}
+                  {/* Header Row */}
                   <div style={{
                     display: 'flex',
                     justifyContent: 'space-between',
-                    alignItems: 'flex-start',
-                    marginBottom: '1rem',
-                    paddingBottom: '1rem',
+                    alignItems: 'center',
+                    marginBottom: '0.75rem',
+                    paddingBottom: '0.75rem',
                     borderBottom: '1px solid #333'
                   }}>
-                  <div>
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'baseline',
-                        gap: '0.5rem',
-                        fontSize: '1.5rem',
-                        fontWeight: 700,
-                        color: 'white',
-                        marginBottom: '0.25rem'
-                      }}>
-                        <span>{outcome.wager}</span>
-                        <span style={{ fontSize: '1.5rem', fontWeight: 700 }}>{outcome.potential}</span>
-                      </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                      <span style={{ color: 'white', fontSize: '1rem' }}>
+                        {outcome.wager} to pay {outcome.potential}
+                      </span>
                       {firstBet.parlayMultiplier && (
-                        <div style={{
-                          fontSize: '0.875rem',
-                          color: '#888888',
-                          marginBottom: '0.25rem'
-                        }}>
-                          MAX {firstBet.parlayMultiplier.toFixed(2)}x
-                  </div>
+                        <span style={{ color: '#888', fontSize: '0.875rem' }}>
+                          <strong>{firstBet.parlayMultiplier.toFixed(2)}x</strong>
+                        </span>
                       )}
-                      <div style={{
-                        fontSize: '0.875rem',
-                        color: '#888888'
-                      }}>
-                        {betGroup.length} {betGroup.length === 1 ? 'PICK' : 'PICKS'}
-                  </div>
-                </div>
+                      <span style={{ color: '#888', fontSize: '0.875rem' }}>
+                        <strong>{betGroup.length} {betGroup.length === 1 ? 'PICK' : 'PICKS'}</strong>
+                      </span>
+                    </div>
                     <div style={{
-                      display: 'flex',
+                      display: 'inline-flex',
                       alignItems: 'center',
-                      gap: '0.5rem',
-                      color: 'white',
-                      fontSize: '1.25rem',
+                      gap: '0.35rem',
+                      padding: '0.2rem 0.6rem',
+                      borderRadius: '10px',
+                      backgroundColor: parlayWon ? 'rgba(34, 197, 94, 0.2)' : parlayLost ? 'rgba(239, 68, 68, 0.2)' : 'rgba(156, 163, 175, 0.2)',
+                      color: parlayWon ? '#22C55E' : parlayLost ? '#EF4444' : '#9CA3AF',
+                      fontSize: '0.75rem',
                       fontWeight: 600
                     }}>
-                      <span>ProfitPlay</span>
+                      {parlayWon ? '✓ WON' : parlayLost ? '✕ LOST' : '○ PENDING'}
                     </div>
                   </div>
 
-                  {/* Table Headers */}
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: '2fr 1fr 1fr',
-                    gap: '1rem',
-                    paddingBottom: '0.75rem',
-                    borderBottom: '1px solid #333',
-                    marginBottom: '1rem'
-                  }}>
-                    <div style={{ color: '#888888', fontSize: '0.875rem', fontWeight: 500 }}>PLAYER</div>
-                    <div style={{ color: '#888888', fontSize: '0.875rem', fontWeight: 500 }}>ACTUAL</div>
-                    <div style={{ color: '#888888', fontSize: '0.875rem', fontWeight: 500 }}>PICK</div>
-                  </div>
-
-                  {/* Player Entries */}
+                  {/* Pick Rows - Compact */}
                   {betGroup.map((bet, idx) => {
                     const playerInfo = getPlayerInfo(bet)
                     const isWon = bet.status === 'WON'
                     const isLost = bet.status === 'LOST'
-                    const isOpen = bet.status === 'OPEN'
-                    
-                    // Determine progress bar color and max value
-                    const progressColor = isWon ? '#22C55E' : isLost ? '#EF4444' : '#888888'
-                    const maxValue = playerInfo.pickValue && playerInfo.actualValue
-                      ? Math.max(playerInfo.pickValue, playerInfo.actualValue) * 1.2
-                      : playerInfo.pickValue ? playerInfo.pickValue * 1.5 : 100
 
                     return (
                       <div
                         key={bet.id}
                         style={{
-                          marginBottom: idx < betGroup.length - 1 ? '2rem' : '0',
-                          paddingBottom: idx < betGroup.length - 1 ? '2rem' : '0',
-                          borderBottom: idx < betGroup.length - 1 ? '1px solid #333' : 'none'
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '0.5rem 0',
+                          borderBottom: idx < betGroup.length - 1 ? '1px solid #222' : 'none'
                         }}
                       >
-                        {/* Player Info Row */}
-                        <div style={{
-                          display: 'grid',
-                          gridTemplateColumns: '2fr 1fr 1fr',
-                          gap: '1.5rem',
-                          alignItems: 'flex-start',
-                          position: 'relative',
-                          zIndex: 0
-                        }}>
-                          {/* Player Column */}
-                          <div style={{ position: 'relative', overflow: 'hidden' }}>
-                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', marginBottom: '0.5rem' }}>
-                              <div style={{ 
-                                position: 'relative', 
-                                width: '60px', 
-                                height: '60px', 
-                                flexShrink: 0,
-                                overflow: 'hidden'
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{
+                            width: '18px',
+                            height: '18px',
+                            borderRadius: '50%',
+                            backgroundColor: isWon ? 'rgba(34, 197, 94, 0.2)' : isLost ? 'rgba(239, 68, 68, 0.2)' : 'rgba(156, 163, 175, 0.2)',
+                            color: isWon ? '#22C55E' : isLost ? '#EF4444' : '#9CA3AF',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '0.65rem',
+                            flexShrink: 0
+                          }}>
+                            {isWon ? '✓' : isLost ? '✕' : '○'}
+                          </span>
+                          <span style={{ color: 'white', fontSize: '0.875rem' }}>
+                            {playerInfo.name}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          {bet.market.marketType === 'SPREAD' ? (
+                            <span style={{ color: '#888', fontSize: '0.875rem' }}>
+                              {playerInfo.pickValue !== null
+                                ? (playerInfo.pickValue > 0 ? `+${playerInfo.pickValue.toFixed(1)}` : playerInfo.pickValue.toFixed(1))
+                                : '—'}
+                            </span>
+                          ) : (
+                            <>
+                              <span style={{ color: '#888', fontSize: '0.875rem' }}>
+                                {playerInfo.pickValue !== null ? playerInfo.pickValue.toFixed(1) : '—'} {playerInfo.statType}
+                              </span>
+                              <span style={{
+                                width: '22px',
+                                height: '22px',
+                                borderRadius: '50%',
+                                backgroundColor: bet.selection === 'over' ? '#22C55E' : '#EF4444',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: 'white',
+                                fontSize: '0.8rem',
+                                fontWeight: 600,
+                                flexShrink: 0
                               }}>
-                                <JerseyIcon number={playerInfo.jersey} />
-                              </div>
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{
-                                  fontSize: '1.125rem',
-                                  fontWeight: 600,
-                                  color: 'white',
-                                  marginBottom: '0.25rem'
-                                }}>
-                                  {playerInfo.name}
-                                </div>
-                                {isParlay && idx === 1 && (
-                                  <div style={{
-                                    fontSize: '0.75rem',
-                                    color: '#EAB308',
-                                    fontWeight: 600,
-                                    marginBottom: '0.25rem'
-                                  }}>
-                                    MULTIPLIER BOOST
-                                  </div>
-                                )}
-                                <div style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '0.5rem',
-                                  padding: '0.25rem 0.75rem',
-                                  borderRadius: '12px',
-                                  backgroundColor: isWon ? 'rgba(34, 197, 94, 0.2)' : isLost ? 'rgba(239, 68, 68, 0.2)' : 'rgba(156, 163, 175, 0.2)',
-                                  color: isWon ? '#22C55E' : isLost ? '#EF4444' : '#9CA3AF',
-                                  fontSize: '0.75rem',
-                                  fontWeight: 600,
-                                  marginBottom: '0.5rem'
-                                }}>
-                                  {isWon ? '✓' : isLost ? '✕' : '○'}
-                                  <span>{bet.status}</span>
-                                </div>
-                              </div>
-                            </div>
-                            <div style={{
-                              fontSize: '0.875rem',
-                              color: '#888888',
-                              marginBottom: '0.25rem'
-                            }}>
-                              {playerInfo.matchup}
-                            </div>
-                            <div style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.5rem',
-                              fontSize: '0.75rem',
-                              color: '#666666',
-                              marginBottom: '0.25rem'
-                            }}>
-                              <span>👁</span>
-                              <span>{playerInfo.engagement}</span>
-                            </div>
-                            {playerInfo.gameStats && (
-                              <div style={{
-                                fontSize: '0.75rem',
-                                color: '#666666',
-                                lineHeight: '1.4'
-                              }}>
-                                {playerInfo.gameStats}
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Actual Column */}
-                          <div style={{ minWidth: '80px' }}>
-                            {playerInfo.actualValue !== null ? (
-                              <>
-                                <div style={{
-                                  height: '8px',
-                                  backgroundColor: '#333',
-                                  borderRadius: '4px',
-                                  marginBottom: '0.75rem',
-                                  position: 'relative',
-                                  overflow: 'hidden',
-                                  width: '100%'
-                                }}>
-                                  <div style={{
-                                    height: '100%',
-                                    width: `${Math.min((playerInfo.actualValue / maxValue) * 100, 100)}%`,
-                                    backgroundColor: progressColor,
-                                    borderRadius: '4px',
-                                    transition: 'width 0.3s ease'
-                                  }}></div>
-                                </div>
-                                <div style={{
-                                  fontSize: '1.125rem',
-                                  fontWeight: 700,
-                                  color: progressColor,
-                                  lineHeight: '1.2'
-                                }}>
-                                  {playerInfo.actualValue.toFixed(0)}
-                                </div>
-                              </>
-                            ) : (
-                              <>
-                                <div style={{
-                                  height: '8px',
-                                  backgroundColor: '#333',
-                                  borderRadius: '4px',
-                                  marginBottom: '0.75rem',
-                                  width: '100%'
-                                }}></div>
-                                <div style={{
-                                  fontSize: '0.875rem',
-                                  color: '#666666'
-                                }}>
-                                  Pending
-                                </div>
-                              </>
-                            )}
-                          </div>
-
-                          {/* Pick Column */}
-                  <div>
-                            {playerInfo.pickValue !== null && (
-                              <>
-                                <div style={{
-                                  fontSize: '1rem',
-                                  fontWeight: 600,
-                                  color: 'white',
-                                  marginBottom: '0.25rem'
-                                }}>
-                                  {playerInfo.pickValue.toFixed(1)}
-                                </div>
-                                <div style={{
-                                  fontSize: '0.75rem',
-                                  color: '#888888',
-                                  marginBottom: '0.5rem'
-                                }}>
-                                  {playerInfo.statType}
-                                </div>
-                                <div style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '0.5rem',
-                                  marginBottom: '0.5rem'
-                                }}>
-                                  <div style={{
-                                    width: '32px',
-                                    height: '32px',
-                                    borderRadius: '50%',
-                                    backgroundColor: bet.selection === 'over' ? '#22C55E' : '#EF4444',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    color: 'white',
-                                    fontSize: '1.25rem',
-                                    fontWeight: 600
-                                  }}>
-                                    {bet.selection === 'over' ? '↑' : '↓'}
-                                  </div>
-                                </div>
-                                <div style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '0.25rem',
-                                  fontSize: '0.75rem',
-                                  color: '#666666'
-                                }}>
-                                  <span>👤</span>
-                                  <span>{Math.floor(Math.random() * 5000 + 500)}</span>
-                                </div>
-                              </>
-                            )}
-                  </div>
-                  </div>
-                </div>
+                                {bet.selection === 'over' ? '↑' : '↓'}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
                     )
                   })}
 
-                  {/* Bottom Buttons */}
+                  {/* Date */}
                   <div style={{
-                    display: 'flex',
-                    gap: '1rem',
-                    marginTop: '1.5rem',
-                    paddingTop: '1.5rem',
-                    borderTop: '1px solid #333'
+                    marginTop: '0.5rem',
+                    fontSize: '0.75rem',
+                    color: '#555'
                   }}>
-                    <button style={{
-                      flex: 1,
-                      padding: '0.75rem',
-                      backgroundColor: '#1E3A5F',
-                      border: 'none',
-                      borderRadius: '8px',
-                      color: 'white',
-                      fontSize: '0.875rem',
-                      fontWeight: 600,
-                      cursor: 'pointer'
-                    }}>
-                      DETAILS
-                    </button>
-                    <button style={{
-                      flex: 1,
-                      padding: '0.75rem',
-                      backgroundColor: '#1E3A5F',
-                      border: 'none',
-                      borderRadius: '8px',
-                      color: 'white',
-                      fontSize: '0.875rem',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '0.5rem'
-                    }}>
-                      <span>↗</span>
-                      <span>SHARE</span>
-                    </button>
+                    {new Date(firstBet.placedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                   </div>
               </div>
               )

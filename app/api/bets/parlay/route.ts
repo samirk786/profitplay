@@ -17,16 +17,33 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get challenge account to get user ID
+    // Get challenge account to get user ID and ruleset
     const challengeAccount = await prisma.challengeAccount.findUnique({
       where: { id: challengeAccountId },
-      select: { userId: true, equity: true }
+      select: { userId: true, equity: true, startBalance: true, state: true, ruleset: { select: { maxStakePct: true } } }
     })
 
     if (!challengeAccount) {
       return NextResponse.json(
         { error: 'Challenge account not found' },
         { status: 404 }
+      )
+    }
+
+    // Check if challenge is active
+    if (challengeAccount.state !== 'ACTIVE') {
+      return NextResponse.json(
+        { error: 'Challenge account is not active' },
+        { status: 400 }
+      )
+    }
+
+    // Validate stake doesn't exceed max bet size (based on starting balance)
+    const maxStake = challengeAccount.startBalance * (challengeAccount.ruleset.maxStakePct / 100)
+    if (stake > maxStake) {
+      return NextResponse.json(
+        { error: `Stake exceeds maximum allowed: $${stake.toFixed(2)} > $${maxStake.toFixed(2)}` },
+        { status: 400 }
       )
     }
 

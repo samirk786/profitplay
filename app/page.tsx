@@ -272,6 +272,7 @@ export default function Home() {
 
   // State for challenge account ID
   const [challengeAccountId, setChallengeAccountId] = useState<string | null>(null)
+  const [maxBetSize, setMaxBetSize] = useState<number | null>(null)
   const [placingBet, setPlacingBet] = useState(false)
   const [currentPlan, setCurrentPlan] = useState<string | null>(null)
 
@@ -324,7 +325,12 @@ export default function Home() {
       if (response.ok) {
         const data = await response.json()
         if (data.challenges && data.challenges.length > 0) {
-          setChallengeAccountId(data.challenges[0].id)
+          const challenge = data.challenges[0]
+          setChallengeAccountId(challenge.id)
+          // Calculate max bet size from starting balance and ruleset
+          if (challenge.ruleset?.maxStakePct && challenge.startBalance) {
+            setMaxBetSize(Math.floor(challenge.startBalance * (challenge.ruleset.maxStakePct / 100)))
+          }
         }
       }
     } catch (error) {
@@ -634,30 +640,43 @@ export default function Home() {
 
   // Handler for preset bet size button clicks
   const handlePresetBetSize = (amount: number) => {
-    setBetAmount(amount)
-    setCustomAmount("")
+    if (maxBetSize && amount > maxBetSize) {
+      setBetAmount(maxBetSize)
+      setCustomAmount(String(maxBetSize))
+    } else {
+      setBetAmount(amount)
+      setCustomAmount("")
+    }
   }
 
   // Handler for custom amount input
   const handleCustomAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
     setCustomAmount(value)
-    
+
     // Parse numeric value
     const numValue = parseFloat(value)
     if (!isNaN(numValue) && numValue > 0) {
-      setBetAmount(numValue)
+      if (maxBetSize && numValue > maxBetSize) {
+        setBetAmount(maxBetSize)
+        setCustomAmount(String(maxBetSize))
+      } else {
+        setBetAmount(numValue)
+      }
     } else if (value === "") {
       // Allow empty input, but don't set betAmount to 0
       setBetAmount(null)
     }
   }
 
+  // Check if bet exceeds max
+  const betExceedsMax = maxBetSize !== null && betAmount !== null && betAmount > maxBetSize
+
   // Calculate payout
   const payout = betAmount && multiplier ? betAmount * multiplier : 0
 
   // Determine if Play button should be disabled
-  const isPlayDisabled = picksCount < 2 || multiplier === null || !betAmount || betAmount <= 0
+  const isPlayDisabled = picksCount < 2 || multiplier === null || !betAmount || betAmount <= 0 || betExceedsMax
 
   // Handler for Play button click
   const handlePlay = async () => {
@@ -1094,11 +1113,11 @@ export default function Home() {
                       <div className="bet-slip-pick-info">
                         <div className="bet-slip-pick-name">{pick.displayName}</div>
                         <div className="bet-slip-pick-line">
-                          {pick.line} {pick.category}
+                          {pick.category === 'Spread' && pick.line > 0 ? '+' : ''}{pick.line} {pick.category}
                         </div>
                       </div>
                       <div className="bet-slip-pick-choice">
-                        {pick.choice === 'over' ? 'Over' : 'Under'}
+                        {pick.category === 'Spread' ? '' : (pick.choice === 'over' ? 'Over' : 'Under')}
                       </div>
                     </div>
                   ))}
@@ -1116,7 +1135,7 @@ export default function Home() {
             </div>
             
                 <div className="bet-slip-bet-sizes">
-                  {betOptions.map((option) => (
+                  {betOptions.filter(o => !maxBetSize || o <= maxBetSize).map((option) => (
                     <button
                       key={option}
                       className={`bet-size-btn ${betAmount === option ? 'bet-size-btn-active' : ''}`}
@@ -1126,13 +1145,14 @@ export default function Home() {
                     </button>
                   ))}
             </div>
-            
+
                 <input
                   type="number"
                   className="bet-slip-custom-input"
-                  placeholder="Custom amount"
+                  placeholder={maxBetSize ? `Max $${maxBetSize}` : 'Custom amount'}
                   value={customAmount}
                   onChange={handleCustomAmountChange}
+                  max={maxBetSize || undefined}
                 />
 
                 <div className="bet-slip-payout">

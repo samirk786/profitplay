@@ -345,7 +345,7 @@ export class OddsApiService {
         ? bookmaker.markets.map(market => ({
             marketType: this.mapMarketType(market.key),
             bookmaker: bookmaker.title,
-            odds: this.processMarketOutcomes(market.outcomes, market.key)
+            odds: this.processMarketOutcomes(market.outcomes, market.key, event.home_team, event.away_team)
           }))
         : []
 
@@ -428,21 +428,25 @@ export class OddsApiService {
   /**
    * Process market outcomes into our odds format (for bulk endpoint)
    */
-  private processMarketOutcomes(outcomes: any[], marketType: string): any {
+  private processMarketOutcomes(outcomes: any[], marketType: string, homeTeam?: string, awayTeam?: string): any {
     if (marketType === 'h2h') {
+      const homeOutcome = homeTeam ? outcomes.find(o => o.name === homeTeam) : outcomes[1]
+      const awayOutcome = awayTeam ? outcomes.find(o => o.name === awayTeam) : outcomes[0]
       return {
-        home: this.roundOdds(outcomes.find(o => o.name === outcomes[1]?.name)?.price || 0),
-        away: this.roundOdds(outcomes.find(o => o.name === outcomes[0]?.name)?.price || 0)
+        home: this.roundOdds(homeOutcome?.price || 0),
+        away: this.roundOdds(awayOutcome?.price || 0)
       }
     } else if (marketType === 'spreads') {
+      const homeOutcome = homeTeam ? outcomes.find(o => o.name === homeTeam) : outcomes[1]
+      const awayOutcome = awayTeam ? outcomes.find(o => o.name === awayTeam) : outcomes[0]
       return {
         home: {
-          spread: this.roundSpread(outcomes.find(o => o.name === outcomes[1]?.name)?.point || 0),
-          odds: this.roundOdds(outcomes.find(o => o.name === outcomes[1]?.name)?.price || 0)
+          spread: this.roundSpread(homeOutcome?.point || 0),
+          odds: this.roundOdds(homeOutcome?.price || 0)
         },
         away: {
-          spread: this.roundSpread(outcomes.find(o => o.name === outcomes[0]?.name)?.point || 0),
-          odds: this.roundOdds(outcomes.find(o => o.name === outcomes[0]?.name)?.price || 0)
+          spread: this.roundSpread(awayOutcome?.point || 0),
+          odds: this.roundOdds(awayOutcome?.price || 0)
         }
       }
     } else if (marketType === 'totals') {
