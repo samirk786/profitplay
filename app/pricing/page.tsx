@@ -15,7 +15,7 @@ const plans = [
       '8% profit target',
       '5% max daily loss',
       '15% max drawdown',
-      '2% max stake per bet',
+      '$100 max stake per bet',
       'Basic markets (NBA, NFL, MLB)',
       'Email support'
     ],
@@ -29,7 +29,7 @@ const plans = [
       '10% profit target',
       '5% max daily loss',
       '15% max drawdown',
-      '3% max stake per bet',
+      '$100 max stake per bet',
       'All major sports',
       'Priority support',
       'Advanced analytics'
@@ -44,7 +44,7 @@ const plans = [
       '12% profit target',
       '5% max daily loss',
       '15% max drawdown',
-      '5% max stake per bet',
+      '$100 max stake per bet',
       'All sports + live markets',
       'Dedicated support',
       'Custom analytics',
