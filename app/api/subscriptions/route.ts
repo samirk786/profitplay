@@ -4,13 +4,14 @@ import { prisma } from '@/lib/prisma'
 import { authOptions } from '../auth/[...nextauth]/route'
 import { SubscriptionPlan } from '@prisma/client'
 import { createAuditLog, AuditActions } from '@/lib/audit-logger'
+import { createCheckoutSession, PLAN_START_BALANCE, StripePlan } from '@/lib/stripe'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session || !session.user?.id) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -37,15 +38,48 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Only STARTER is available for purchase right now (admin can use any)
     const isAdmin = session.user.email === 'admin@profitplay.com' && session.user.role === 'ADMIN'
-    if (!isAdmin && planUpper !== 'STANDARD') {
+    if (!isAdmin && planUpper !== 'STARTER') {
       return NextResponse.json(
-        { error: 'Only the Standard plan is available during beta.' },
+        { error: 'Only the Starter plan is available right now.' },
         { status: 403 }
       )
     }
 
-    // Get the ruleset for the plan
+    // Check if user already has an active challenge account
+    const existingChallenge = await prisma.challengeAccount.findFirst({
+      where: {
+        userId: session.user.id,
+        state: 'ACTIVE'
+      }
+    })
+
+    if (existingChallenge) {
+      return NextResponse.json(
+        { error: 'You already have an active evaluation. Complete or reset it before purchasing a new one.' },
+        { status: 400 }
+      )
+    }
+
+    // Check if Stripe is configured (has real keys, not placeholder)
+    const stripeConfigured = process.env.STRIPE_SECRET_KEY && !process.env.STRIPE_SECRET_KEY.includes('...')
+
+    if (stripeConfigured) {
+      // Create Stripe checkout session and return the URL
+      const checkoutSession = await createCheckoutSession(
+        planUpper as StripePlan,
+        session.user.id,
+        session.user.email || ''
+      )
+
+      return NextResponse.json({
+        checkoutUrl: checkoutSession.url,
+        message: 'Redirecting to payment'
+      })
+    }
+
+    // Fallback: direct creation without Stripe (for admin/dev)
     const ruleset = await prisma.ruleset.findUnique({
       where: { plan: planUpper as SubscriptionPlan }
     })
@@ -78,56 +112,39 @@ export async function POST(request: NextRequest) {
       }
     })
 
+    const startBalance = PLAN_START_BALANCE[planUpper] || 10000
+
     if (existingSubscription) {
-      // Update existing subscription
       const updatedSubscription = await prisma.subscription.update({
         where: { id: existingSubscription.id },
         data: {
           plan: planUpper as SubscriptionPlan,
           status: 'ACTIVE',
-          renewAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+          renewAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         }
       })
 
-      // Check if user has an active challenge account, if not create one
-      const existingChallenge = await prisma.challengeAccount.findFirst({
-        where: {
+      const challengeAccount = await prisma.challengeAccount.create({
+        data: {
           userId: session.user.id,
+          rulesetId: ruleset.id,
+          startBalance,
+          equity: startBalance,
+          highWaterMark: startBalance,
           state: 'ACTIVE'
         }
       })
 
-      if (!existingChallenge) {
-        const challengeAccount = await prisma.challengeAccount.create({
-          data: {
-            userId: session.user.id,
-            rulesetId: ruleset.id,
-            startBalance: 10000,
-            equity: 10000,
-            highWaterMark: 10000,
-            state: 'ACTIVE'
-          }
-        })
-
-        await createAuditLog({
-          userId: session.user.id,
-          action: AuditActions.CHALLENGE_ACCOUNT_CREATED,
-          payload: {
-            challengeAccountId: challengeAccount.id,
-            plan: planUpper,
-            startBalance: 10000,
-            rulesetId: ruleset.id
-          }
-        })
-      } else {
-        // Update challenge account ruleset if needed
-        await prisma.challengeAccount.update({
-          where: { id: existingChallenge.id },
-          data: {
-            rulesetId: ruleset.id
-          }
-        })
-      }
+      await createAuditLog({
+        userId: session.user.id,
+        action: AuditActions.CHALLENGE_ACCOUNT_CREATED,
+        payload: {
+          challengeAccountId: challengeAccount.id,
+          plan: planUpper,
+          startBalance,
+          rulesetId: ruleset.id
+        }
+      })
 
       await createAuditLog({
         userId: session.user.id,
@@ -145,25 +162,24 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Create new subscription (without Stripe for now)
+    // Create new subscription (without Stripe for dev/admin)
     const subscription = await prisma.subscription.create({
       data: {
         userId: session.user.id,
-        stripeCustomerId: `temp_${session.user.id}_${Date.now()}`, // Temporary ID
+        stripeCustomerId: `temp_${session.user.id}_${Date.now()}`,
         status: 'ACTIVE',
         plan: planUpper as SubscriptionPlan,
-        renewAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+        renewAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       }
     })
 
-    // Create challenge account
     const challengeAccount = await prisma.challengeAccount.create({
       data: {
         userId: session.user.id,
         rulesetId: ruleset.id,
-        startBalance: 10000,
-        equity: 10000,
-        highWaterMark: 10000,
+        startBalance,
+        equity: startBalance,
+        highWaterMark: startBalance,
         state: 'ACTIVE'
       }
     })
@@ -184,7 +200,7 @@ export async function POST(request: NextRequest) {
       payload: {
         challengeAccountId: challengeAccount.id,
         plan: planUpper,
-        startBalance: 10000,
+        startBalance,
         rulesetId: ruleset.id
       }
     })

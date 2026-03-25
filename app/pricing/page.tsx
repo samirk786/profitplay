@@ -9,49 +9,18 @@ import Header from '@/components/Header'
 const plans = [
   {
     name: 'Starter',
-    price: 29,
-    description: 'Perfect for beginners',
+    price: 30,
+    description: 'Start your evaluation',
     features: [
-      '8% profit target',
-      '5% max daily loss',
-      '15% max drawdown',
-      '$100 max stake per bet',
-      'Basic markets (NBA, NFL, MLB)',
-      'Email support'
-    ],
-    popular: false
-  },
-  {
-    name: 'Standard',
-    price: 59,
-    description: 'Most popular choice',
-    features: [
-      '10% profit target',
-      '5% max daily loss',
-      '15% max drawdown',
-      '$100 max stake per bet',
-      'All major sports',
-      'Priority support',
-      'Advanced analytics'
+      '$5,000 starting balance',
+      '$400 profit target (8%)',
+      '$350 max drawdown (7%)',
+      '$150 daily loss limit (3%)',
+      '$75 max bet size',
+      'All markets (Spreads, Props, Totals)',
     ],
     popular: true
   },
-  {
-    name: 'Pro',
-    price: 99,
-    description: 'For serious evaluators',
-    features: [
-      '12% profit target',
-      '5% max daily loss',
-      '15% max drawdown',
-      '$100 max stake per bet',
-      'All sports + live markets',
-      'Dedicated support',
-      'Custom analytics',
-      'Early access to new features'
-    ],
-    popular: false
-  }
 ]
 
 export default function Pricing() {
@@ -89,19 +58,11 @@ export default function Pricing() {
   }
 
   const handlePlanSelection = async (planName: string) => {
-    const isStandard = planName.toUpperCase() === 'STANDARD'
-    const isAdmin = session?.user?.email === 'admin@profitplay.com' && session?.user?.role === 'ADMIN'
-    if (!isStandard && !isAdmin) {
-      return
-    }
-
     if (!session) {
-      // Not logged in - redirect to signup
       router.push(`/auth/signup?plan=${planName.toLowerCase()}`)
       return
     }
 
-    // Logged in - create subscription
     setLoading(planName)
     try {
       const response = await fetch('/api/subscriptions', {
@@ -123,7 +84,13 @@ export default function Pricing() {
         return
       }
 
-      // Success - redirect to dashboard
+      // If Stripe checkout URL returned, redirect there
+      if (data.checkoutUrl) {
+        window.location.href = data.checkoutUrl
+        return
+      }
+
+      // Otherwise (admin/dev fallback), go to dashboard
       router.push('/dashboard')
     } catch (error) {
       console.error('Error creating subscription:', error)
@@ -172,20 +139,12 @@ export default function Pricing() {
             const planKey = plan.name.toUpperCase()
             const currentRank = currentPlan ? planRank[currentPlan] : null
             const thisRank = planRank[planKey]
-            const isStandardPlan = planKey === 'STANDARD'
-            const isAdmin = session?.user?.email === 'admin@profitplay.com' && session?.user?.role === 'ADMIN'
             const isSelected = currentRank !== null && currentRank === thisRank
-            const isUpgrade = currentRank !== null && thisRank > currentRank
-            const isLower = currentRank !== null && thisRank < currentRank
 
             const buttonLabel = isSelected
-              ? 'Selected'
-              : !isStandardPlan && !isAdmin
-              ? 'Unavailable'
-              : isUpgrade
-              ? 'Upgrade'
+              ? 'Current Plan'
               : 'Get Started'
-            const isDisabled = loading === plan.name || isSelected || isLower || (!isStandardPlan && !isAdmin)
+            const isDisabled = loading === plan.name || isSelected
 
             return (
             <div

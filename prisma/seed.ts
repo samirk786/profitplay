@@ -9,15 +9,23 @@ async function main() {
   const rulesets = await Promise.all([
     prisma.ruleset.upsert({
       where: { plan: SubscriptionPlan.STARTER },
-      update: {},
+      update: {
+        profitTargetPct: 8.0,
+        maxDailyLossPct: 3.0,
+        maxDrawdownPct: 7.0,
+        maxStakePct: 1.5,
+        allowedMarkets: ['MONEYLINE', 'SPREAD', 'TOTAL', 'PROPS'],
+        maxOdds: 500.0,
+        consistencyRule: false,
+      },
       create: {
         name: 'Starter Plan Rules',
         plan: SubscriptionPlan.STARTER,
         profitTargetPct: 8.0,
-        maxDailyLossPct: 5.0,
-        maxDrawdownPct: 15.0,
-        maxStakePct: 1.0,
-        allowedMarkets: ['MONEYLINE', 'SPREAD', 'TOTAL'],
+        maxDailyLossPct: 3.0,
+        maxDrawdownPct: 7.0,
+        maxStakePct: 1.5,
+        allowedMarkets: ['MONEYLINE', 'SPREAD', 'TOTAL', 'PROPS'],
         maxOdds: 500.0,
         consistencyRule: false,
       },

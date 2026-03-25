@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { stripe, constructWebhookEvent } from '@/lib/stripe'
+import { stripe, constructWebhookEvent, PLAN_START_BALANCE } from '@/lib/stripe'
 import { prisma } from '@/lib/prisma'
 import { createAuditLog, AuditActions } from '@/lib/audit-logger'
 
@@ -57,22 +57,28 @@ async function handleCheckoutSessionCompleted(session: any) {
   }
 
   try {
-    // Create or update subscription
+    // Create or update subscription record (works for both one-time and recurring)
+    const customerId = session.customer || `stripe_${userId}_${Date.now()}`
+    const subscriptionId = session.subscription || null
+    const renewAt = session.subscription
+      ? new Date((session.subscription_details?.metadata?.current_period_end || Math.floor(Date.now() / 1000) + 30 * 86400) * 1000)
+      : null
+
     const subscription = await prisma.subscription.upsert({
-      where: { stripeCustomerId: session.customer },
+      where: { stripeCustomerId: customerId },
       update: {
-        stripeSubscriptionId: session.subscription,
+        stripeSubscriptionId: subscriptionId,
         status: 'ACTIVE',
         plan: plan.toUpperCase(),
-        renewAt: new Date(session.subscription_details?.metadata?.current_period_end * 1000)
+        renewAt: renewAt
       },
       create: {
         userId,
-        stripeCustomerId: session.customer,
-        stripeSubscriptionId: session.subscription,
+        stripeCustomerId: customerId,
+        stripeSubscriptionId: subscriptionId,
         status: 'ACTIVE',
         plan: plan.toUpperCase(),
-        renewAt: new Date(session.subscription_details?.metadata?.current_period_end * 1000)
+        renewAt: renewAt
       }
     })
 
@@ -82,8 +88,8 @@ async function handleCheckoutSessionCompleted(session: any) {
     })
 
     if (ruleset) {
-      const startBalance = 10000 // Default starting balance
-      
+      const startBalance = PLAN_START_BALANCE[plan.toUpperCase()] || 10000
+
       const challengeAccount = await prisma.challengeAccount.create({
         data: {
           userId,

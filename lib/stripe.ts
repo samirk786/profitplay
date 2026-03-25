@@ -11,7 +11,7 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 export const STRIPE_PLANS = {
   STARTER: {
     priceId: process.env.STRIPE_STARTER_PRICE_ID || 'price_starter',
-    amount: 2900, // $29.00 in cents
+    amount: 3000, // $30.00 in cents
     name: 'Starter Plan',
   },
   STANDARD: {
@@ -26,6 +26,13 @@ export const STRIPE_PLANS = {
   },
 } as const
 
+// Starting balance per plan
+export const PLAN_START_BALANCE: Record<string, number> = {
+  STARTER: 5000,
+  STANDARD: 10000,
+  PRO: 10000,
+}
+
 export type StripePlan = keyof typeof STRIPE_PLANS
 
 export async function createCheckoutSession(
@@ -34,17 +41,23 @@ export async function createCheckoutSession(
   userEmail: string
 ) {
   const stripePlan = STRIPE_PLANS[plan]
-  
+
   // Ensure NEXTAUTH_URL is set
-  const baseUrl = process.env.NEXTAUTH_URL || 
+  const baseUrl = process.env.NEXTAUTH_URL ||
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
 
   const session = await stripe.checkout.sessions.create({
-    mode: 'subscription',
+    mode: 'payment',
     payment_method_types: ['card'],
     line_items: [
       {
-        price: stripePlan.priceId,
+        price_data: {
+          currency: 'usd',
+          product_data: {
+            name: stripePlan.name,
+          },
+          unit_amount: stripePlan.amount,
+        },
         quantity: 1,
       },
     ],

@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
       await updateChallengeAccountState(
         bet.challengeAccountId,
         ruleCheck.newState,
-        ruleCheck.newState === 'PASSED' ? new Date() : undefined
+        (ruleCheck.newState === 'PASSED' || ruleCheck.newState === 'FAILED') ? new Date() : undefined
       )
     }
 
@@ -318,7 +318,7 @@ export async function PUT(request: NextRequest) {
       await updateChallengeAccountState(
         bet.challengeAccountId,
         ruleCheck.newState,
-        ruleCheck.newState === 'PASSED' ? new Date() : undefined
+        (ruleCheck.newState === 'PASSED' || ruleCheck.newState === 'FAILED') ? new Date() : undefined
       )
     }
 
