@@ -399,6 +399,7 @@ export default function Home() {
               team: null,
               matchup: metadata?.matchup || `${market.participants[0]} @ ${market.participants[1]}`,
               gameDateTime: gameDateTime,
+              rawStartTime: market.startTime || null,
               // Store extra spread data for rendering
               _spreadData: {
                 home: { team: market.participants[1], spread: odds?.home?.spread, odds: odds?.home?.odds },
@@ -436,7 +437,8 @@ export default function Home() {
                 jerseyNumber: metadata?.jersey ?? null,
                 team: metadata?.team || rosterTeam || null,
                 matchup: metadata?.matchup || `${market.participants[0]} @ ${market.participants[1] || ''}`,
-                gameDateTime: gameDateTime
+                gameDateTime: gameDateTime,
+                rawStartTime: market.startTime || null
               }
             })
 
@@ -491,11 +493,11 @@ export default function Home() {
       .filter(Boolean) // Remove empty strings
   )).sort() // Sort alphabetically for consistent display
 
-  // Filter players based on selected sport, category, and matchup
+  // Filter players based on selected sport, category, and matchup, sorted by line descending
   const visiblePlayers = playerProps.filter(player => {
     const matchesMatchup = selectedMatchups.length === 0 || selectedMatchups.includes(player.matchup)
     return matchesMatchup
-  })
+  }).sort((a, b) => (b.line || 0) - (a.line || 0))
 
 
   // Derive active picks from stored selections
@@ -528,12 +530,25 @@ export default function Home() {
 
   const multiplier = getMultiplier(picksCount)
 
+  // Helper to check if a game has already started
+  const isGameStarted = (player: any) => {
+    const startTime = player.rawStartTime
+    if (!startTime) return false
+    return new Date(startTime) <= new Date()
+  }
+
   // Handler for Over/Under button clicks
   const handleChoice = (player: PlayerProp, choice: string) => {
+    // Block picks for games that have already started
+    if (isGameStarted(player)) {
+      alert('This game has already started. You can no longer place picks on it.')
+      return
+    }
+
     const lowerChoice = choice.toLowerCase() as 'over' | 'under'
     const key = getPropKey(player.sport, player.playerName, player.category)
     const currentSelection = selectedPicks[key]?.choice
-    
+
     // Prevent adding more than 8 picks
     if (!currentSelection && picksCount >= 8) {
       console.log("Maximum of 8 picks reached.")
@@ -564,6 +579,12 @@ export default function Home() {
   }
 
   const handleSpreadSelection = (game: PlayerProp, team: 'away' | 'home') => {
+    // Block picks for games that have already started
+    if (isGameStarted(game)) {
+      alert('This game has already started. You can no longer place picks on it.')
+      return
+    }
+
     const spreadData = (game as any)._spreadData
     if (!spreadData) return
 
@@ -956,9 +977,15 @@ export default function Home() {
             const homeKey = getSpreadKey(game.id, spreadData.home.team)
             const awaySelected = selectedPicks[awayKey]?.choice === 'over'
             const homeSelected = selectedPicks[homeKey]?.choice === 'over'
+            const gameStarted = isGameStarted(game)
 
             return (
-              <div key={game.id} className="player-card">
+              <div key={game.id} className="player-card" style={gameStarted ? { opacity: 0.5, position: 'relative' } : {}}>
+                {gameStarted && (
+                  <div style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', background: '#ef4444', color: 'white', padding: '0.15rem 0.5rem', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 600, zIndex: 2, textTransform: 'uppercase' }}>
+                    Live
+                  </div>
+                )}
                 <div className="player-card-body" style={{ padding: '1rem' }}>
                   <div className="player-matchup-row" style={{ marginBottom: '0.75rem' }}>
                     <span className="player-matchup">{game.matchup}</span>
@@ -1016,13 +1043,19 @@ export default function Home() {
             const pickKey = getPropKey(player.sport, player.playerName, player.category)
             const selectedChoice = selectedPicks[pickKey]?.choice
             const teamColor = getTeamColor(player.team)
+            const gameStarted = isGameStarted(player)
 
             return (
               <div
                 key={player.id}
                 className="player-card"
-                style={{ ['--team-color' as any]: teamColor || '#1e1e1e' }}
+                style={{ ['--team-color' as any]: teamColor || '#1e1e1e', position: 'relative', ...(gameStarted ? { opacity: 0.5 } : {}) }}
               >
+                {gameStarted && (
+                  <div style={{ position: 'absolute', top: '0.5rem', left: '0.5rem', background: '#ef4444', color: 'white', padding: '0.15rem 0.5rem', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 600, zIndex: 2, textTransform: 'uppercase' }}>
+                    Live
+                  </div>
+                )}
                 <div
                   className="player-card-top"
                   style={{ position: 'relative', justifyContent: 'center' }}

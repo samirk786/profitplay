@@ -107,6 +107,20 @@ export async function POST(request: NextRequest) {
       })
     )
 
+    // Check if any games have already started
+    const now = new Date()
+    const startedGames = marketData.filter(d => d.market.startTime && new Date(d.market.startTime) <= now)
+    if (startedGames.length > 0) {
+      const startedNames = startedGames.map(d => {
+        const participants = d.market.participants as string[]
+        return participants?.join(' vs ') || d.market.id
+      })
+      return NextResponse.json(
+        { error: `Cannot place bet - game(s) already started: ${startedNames.join(', ')}` },
+        { status: 400 }
+      )
+    }
+
     // For parlays, we validate the total stake against rules (not individual picks)
     // Use the first market's type for validation (or we could check all)
     const firstMarket = marketData[0].market
