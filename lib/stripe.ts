@@ -47,17 +47,11 @@ export async function createCheckoutSession(
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
 
   const session = await stripe.checkout.sessions.create({
-    mode: 'payment',
+    mode: 'subscription',
     payment_method_types: ['card'],
     line_items: [
       {
-        price_data: {
-          currency: 'usd',
-          product_data: {
-            name: stripePlan.name,
-          },
-          unit_amount: stripePlan.amount,
-        },
+        price: stripePlan.priceId,
         quantity: 1,
       },
     ],
