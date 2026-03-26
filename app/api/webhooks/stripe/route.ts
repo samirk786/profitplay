@@ -57,12 +57,20 @@ async function handleCheckoutSessionCompleted(session: any) {
   }
 
   try {
-    // Create or update subscription record (works for both one-time and recurring)
+    // Create or update subscription record
     const customerId = session.customer || `stripe_${userId}_${Date.now()}`
     const subscriptionId = session.subscription || null
-    const renewAt = session.subscription
-      ? new Date((session.subscription_details?.metadata?.current_period_end || Math.floor(Date.now() / 1000) + 30 * 86400) * 1000)
-      : null
+
+    // Get renewal date from the Stripe subscription if available
+    let renewAt: Date | null = null
+    if (subscriptionId) {
+      try {
+        const stripeSub = await stripe.subscriptions.retrieve(subscriptionId)
+        renewAt = new Date(stripeSub.current_period_end * 1000)
+      } catch {
+        renewAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // fallback: 30 days
+      }
+    }
 
     const subscription = await prisma.subscription.upsert({
       where: { stripeCustomerId: customerId },

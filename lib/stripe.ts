@@ -60,6 +60,12 @@ export async function createCheckoutSession(
       userId,
       plan,
     },
+    subscription_data: {
+      metadata: {
+        userId,
+        plan,
+      },
+    },
     success_url: `${baseUrl}/dashboard?success=true`,
     cancel_url: `${baseUrl}/pricing?canceled=true`,
   })
