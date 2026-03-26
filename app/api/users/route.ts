@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { SubscriptionPlan } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 
 export const dynamic = 'force-dynamic'
@@ -59,53 +58,7 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // Auto-assign STANDARD plan for beta testing
-    try {
-      const ruleset = await prisma.ruleset.findUnique({
-        where: { plan: 'STANDARD' as SubscriptionPlan }
-      })
-
-      if (ruleset) {
-        // Ensure ruleset has all required markets
-        const requiredMarkets = ['MONEYLINE', 'SPREAD', 'TOTAL', 'PROPS']
-        const currentMarkets = ruleset.allowedMarkets || []
-        const missingMarkets = requiredMarkets.filter(m => !currentMarkets.includes(m))
-        if (missingMarkets.length > 0) {
-          await prisma.ruleset.update({
-            where: { id: ruleset.id },
-            data: {
-              allowedMarkets: [...new Set([...currentMarkets, ...requiredMarkets])]
-            }
-          })
-        }
-
-        // Create subscription
-        await prisma.subscription.create({
-          data: {
-            userId: user.id,
-            stripeCustomerId: `beta_${user.id}_${Date.now()}`,
-            status: 'ACTIVE',
-            plan: 'STANDARD' as SubscriptionPlan,
-            renewAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year for beta
-          }
-        })
-
-        // Create challenge account
-        await prisma.challengeAccount.create({
-          data: {
-            userId: user.id,
-            rulesetId: ruleset.id,
-            startBalance: 10000,
-            equity: 10000,
-            highWaterMark: 10000,
-            state: 'ACTIVE'
-          }
-        })
-      }
-    } catch (subError) {
-      // Don't fail signup if subscription auto-assign fails
-      console.error('Failed to auto-assign STANDARD plan:', subError)
-    }
+    // No auto-subscription or challenge account — user must purchase a plan first
 
     return NextResponse.json({ user }, { status: 201 })
   } catch (error: any) {

@@ -14,7 +14,7 @@ const plans = [
     features: [
       '$5,000 starting balance',
       '$400 profit target (8%)',
-      '$350 max drawdown (7%)',
+      '$350 max trailing drawdown (7%)',
       '$150 daily loss limit (3%)',
       '$75 max bet size',
       'All markets (Spreads, Props, Totals)',

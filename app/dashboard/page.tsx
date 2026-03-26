@@ -407,6 +407,7 @@ interface ChallengeAccount {
   equity: number
   highWaterMark: number
   state: string
+  isFunded: boolean
   ruleset: {
     name: string
     profitTargetPct: number
@@ -459,6 +460,7 @@ export default function Dashboard() {
           equity: activeChallenge.equity,
           highWaterMark: activeChallenge.highWaterMark,
           state: activeChallenge.state,
+          isFunded: activeChallenge.isFunded || false,
           ruleset: {
             name: activeChallenge.ruleset.name,
             profitTargetPct: activeChallenge.ruleset.profitTargetPct,
@@ -682,27 +684,41 @@ export default function Dashboard() {
               textTransform: 'uppercase',
               letterSpacing: '0.5px'
             }}>Status</h3>
-            <span style={{
-              display: 'inline-block',
-              padding: '0.5rem 1rem',
-              borderRadius: '20px',
-              fontSize: '0.875rem',
-              fontWeight: 600,
-              backgroundColor: challengeAccount.state === 'ACTIVE' ? 'rgba(34, 197, 94, 0.2)' :
-                                challengeAccount.state === 'PASSED' ? 'rgba(59, 130, 246, 0.2)' :
-                                challengeAccount.state === 'FAILED' ? 'rgba(239, 68, 68, 0.2)' :
-                                'rgba(234, 179, 8, 0.2)',
-              color: challengeAccount.state === 'ACTIVE' ? '#22C55E' :
-                     challengeAccount.state === 'PASSED' ? '#3B82F6' :
-                     challengeAccount.state === 'FAILED' ? '#EF4444' :
-                     '#EAB308',
-              border: `1px solid ${challengeAccount.state === 'ACTIVE' ? '#22C55E' :
-                                  challengeAccount.state === 'PASSED' ? '#3B82F6' :
-                                  challengeAccount.state === 'FAILED' ? '#EF4444' :
-                                  '#EAB308'}`
-            }}>
-              {challengeAccount.state}
-            </span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-start' }}>
+              <span style={{
+                display: 'inline-block',
+                padding: '0.35rem 0.75rem',
+                borderRadius: '20px',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                backgroundColor: challengeAccount.isFunded ? 'rgba(168, 85, 247, 0.2)' : 'rgba(59, 130, 246, 0.2)',
+                color: challengeAccount.isFunded ? '#A855F7' : '#3B82F6',
+                border: `1px solid ${challengeAccount.isFunded ? '#A855F7' : '#3B82F6'}`
+              }}>
+                {challengeAccount.isFunded ? 'FUNDED' : 'CHALLENGE'}
+              </span>
+              <span style={{
+                display: 'inline-block',
+                padding: '0.5rem 1rem',
+                borderRadius: '20px',
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                backgroundColor: challengeAccount.state === 'ACTIVE' ? 'rgba(34, 197, 94, 0.2)' :
+                                  challengeAccount.state === 'PASSED' ? 'rgba(59, 130, 246, 0.2)' :
+                                  challengeAccount.state === 'FAILED' ? 'rgba(239, 68, 68, 0.2)' :
+                                  'rgba(234, 179, 8, 0.2)',
+                color: challengeAccount.state === 'ACTIVE' ? '#22C55E' :
+                       challengeAccount.state === 'PASSED' ? '#3B82F6' :
+                       challengeAccount.state === 'FAILED' ? '#EF4444' :
+                       '#EAB308',
+                border: `1px solid ${challengeAccount.state === 'ACTIVE' ? '#22C55E' :
+                                    challengeAccount.state === 'PASSED' ? '#3B82F6' :
+                                    challengeAccount.state === 'FAILED' ? '#EF4444' :
+                                    '#EAB308'}`
+              }}>
+                {challengeAccount.state === 'PAUSED' ? 'FROZEN' : challengeAccount.state}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -720,50 +736,54 @@ export default function Dashboard() {
             borderRadius: '16px',
             padding: '1.5rem'
           }}>
-            <h3 style={{ 
-              fontSize: '1.125rem', 
-              fontWeight: 600, 
-              color: 'white', 
-              marginBottom: '1rem' 
+            <h3 style={{
+              fontSize: '1.125rem',
+              fontWeight: 600,
+              color: 'white',
+              marginBottom: '1rem'
             }}>
-              Progress to Target
+              {challengeAccount.isFunded ? 'Profit/Loss' : 'Progress to Target'}
             </h3>
             <div style={{ marginBottom: '1rem' }}>
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                fontSize: '0.875rem', 
-                color: '#cccccc', 
-                marginBottom: '0.5rem' 
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                fontSize: '0.875rem',
+                color: '#cccccc',
+                marginBottom: '0.5rem'
               }}>
                 <span>Current: ${profit.toLocaleString()}</span>
-                <span>Target: ${profitTarget.toLocaleString()}</span>
+                {!challengeAccount.isFunded && <span>Target: ${profitTarget.toLocaleString()}</span>}
               </div>
-              <div style={{ 
-                width: '100%', 
-                backgroundColor: '#333333', 
-                borderRadius: '9999px', 
-                height: '12px',
-                overflow: 'hidden'
-              }}>
-                <div
-                  style={{
-                    backgroundColor: '#3B82F6',
-                    height: '100%',
-                    borderRadius: '9999px',
-                    transition: 'width 0.3s ease',
-                    width: `${Math.max(0, Math.min(100, progressToTarget))}%`
-                  }}
-                ></div>
-              </div>
-              <p style={{ 
-                fontSize: '0.875rem', 
-                color: '#cccccc', 
-                marginTop: '0.5rem',
-                margin: 0
-              }}>
-                {progressToTarget.toFixed(1)}% complete
-              </p>
+              {!challengeAccount.isFunded && (
+                <div style={{
+                  width: '100%',
+                  backgroundColor: '#333333',
+                  borderRadius: '9999px',
+                  height: '12px',
+                  overflow: 'hidden'
+                }}>
+                  <div
+                    style={{
+                      backgroundColor: '#3B82F6',
+                      height: '100%',
+                      borderRadius: '9999px',
+                      transition: 'width 0.3s ease',
+                      width: `${Math.max(0, Math.min(100, progressToTarget))}%`
+                    }}
+                  ></div>
+                </div>
+              )}
+              {!challengeAccount.isFunded && (
+                <p style={{
+                  fontSize: '0.875rem',
+                  color: '#cccccc',
+                  marginTop: '0.5rem',
+                  margin: 0
+                }}>
+                  {progressToTarget.toFixed(1)}% complete
+                </p>
+              )}
             </div>
           </div>
 
@@ -780,7 +800,7 @@ export default function Dashboard() {
               color: 'white', 
               marginBottom: '0.5rem' 
             }}>
-              Run Guidelines
+              {challengeAccount.isFunded ? 'Account Rules' : 'Challenge Rules'}
             </h3>
             <p style={{ 
               fontSize: '0.875rem', 
@@ -790,25 +810,29 @@ export default function Dashboard() {
               These limits keep each run fair and skill-based
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ color: '#cccccc', display: 'flex', alignItems: 'center' }}>
-                  Goal
-                  <span className="info-tooltip">
-                    i
-                    <span className="info-tooltip-text">
-                      How much you need to make to pass the challenge.
+              {!challengeAccount.isFunded && (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ color: '#cccccc', display: 'flex', alignItems: 'center' }}>
+                      Goal
+                      <span className="info-tooltip">
+                        i
+                        <span className="info-tooltip-text">
+                          How much you need to make to pass the challenge.
+                        </span>
+                      </span>
+                      :
                     </span>
-                  </span>
-                  :
-                </span>
-                <span style={{ fontWeight: 600, color: 'white' }}>${profitTarget.toLocaleString()}/{challengeAccount.ruleset.profitTargetPct}%</span>
-              </div>
-              <div style={{ 
-                width: '100%', 
-                height: '1px', 
-                backgroundColor: '#333333',
-                margin: '0.25rem 0'
-              }}></div>
+                    <span style={{ fontWeight: 600, color: 'white' }}>${profitTarget.toLocaleString()}/{challengeAccount.ruleset.profitTargetPct}%</span>
+                  </div>
+                  <div style={{
+                    width: '100%',
+                    height: '1px',
+                    backgroundColor: '#333333',
+                    margin: '0.25rem 0'
+                  }}></div>
+                </>
+              )}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ color: '#cccccc', display: 'flex', alignItems: 'center' }}>
                   Max Daily Loss
@@ -830,16 +854,16 @@ export default function Dashboard() {
               }}></div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ color: '#cccccc', display: 'flex', alignItems: 'center' }}>
-                  Allowed Dip
+                  Max Trailing Drawdown
                   <span className="info-tooltip">
                     i
                     <span className="info-tooltip-text">
-                      The most you can lose overall before your account fails.
+                      Maximum drop from your highest balance. If you lose this amount from your peak, your account is {challengeAccount.isFunded ? 'frozen' : 'failed'}.
                     </span>
                   </span>
                   :
                 </span>
-                <span style={{ fontWeight: 600, color: 'white' }}>${(challengeAccount.startBalance * (1 - challengeAccount.ruleset.maxDrawdownPct / 100)).toLocaleString()}/{challengeAccount.ruleset.maxDrawdownPct}%</span>
+                <span style={{ fontWeight: 600, color: 'white' }}>${(challengeAccount.startBalance * challengeAccount.ruleset.maxDrawdownPct / 100).toLocaleString()}/{challengeAccount.ruleset.maxDrawdownPct}%</span>
               </div>
               <div style={{ 
                 width: '100%', 

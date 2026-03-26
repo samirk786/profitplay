@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/prisma'
-import { checkChallengeRules, updateChallengeAccountState, calculatePnlFromBet } from '@/lib/rules-engine'
+import { checkChallengeRules, updateChallengeAccountState, calculatePnlFromBet, createFundedAccount } from '@/lib/rules-engine'
 import { createAuditLog, AuditActions } from '@/lib/audit-logger'
 
 export const dynamic = 'force-dynamic'
@@ -180,13 +180,32 @@ export async function POST(request: NextRequest) {
 
     // Check rules after settlement
     const ruleCheck = await checkChallengeRules(bet.challengeAccountId, pnl)
-    
+
     if (ruleCheck.newState) {
       await updateChallengeAccountState(
         bet.challengeAccountId,
         ruleCheck.newState,
         (ruleCheck.newState === 'PASSED' || ruleCheck.newState === 'FAILED') ? new Date() : undefined
       )
+
+      // If challenge passed, automatically create a funded account
+      if (ruleCheck.newState === 'PASSED') {
+        try {
+          const fundedAccount = await createFundedAccount(bet.challengeAccountId)
+          await createAuditLog({
+            userId: bet.challengeAccount.userId,
+            action: AuditActions.CHALLENGE_ACCOUNT_CREATED,
+            payload: {
+              challengeAccountId: fundedAccount.id,
+              isFunded: true,
+              reason: 'Challenge passed - funded account created',
+              sourceAccountId: bet.challengeAccountId
+            }
+          })
+        } catch (fundedError) {
+          console.error('Failed to create funded account:', fundedError)
+        }
+      }
     }
 
     // Create audit log
@@ -313,13 +332,32 @@ export async function PUT(request: NextRequest) {
 
     // Check rules after settlement
     const ruleCheck = await checkChallengeRules(bet.challengeAccountId, pnlDifference)
-    
+
     if (ruleCheck.newState) {
       await updateChallengeAccountState(
         bet.challengeAccountId,
         ruleCheck.newState,
         (ruleCheck.newState === 'PASSED' || ruleCheck.newState === 'FAILED') ? new Date() : undefined
       )
+
+      // If challenge passed, automatically create a funded account
+      if (ruleCheck.newState === 'PASSED') {
+        try {
+          const fundedAccount = await createFundedAccount(bet.challengeAccountId)
+          await createAuditLog({
+            userId: bet.challengeAccount.userId,
+            action: AuditActions.CHALLENGE_ACCOUNT_CREATED,
+            payload: {
+              challengeAccountId: fundedAccount.id,
+              isFunded: true,
+              reason: 'Challenge passed - funded account created',
+              sourceAccountId: bet.challengeAccountId
+            }
+          })
+        } catch (fundedError) {
+          console.error('Failed to create funded account:', fundedError)
+        }
+      }
     }
 
     // Create audit log

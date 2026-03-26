@@ -61,6 +61,7 @@ export async function checkChallengeRules(
   const currentEquity = challengeAccount.equity
   const startBalance = challengeAccount.startBalance
   const highWaterMark = challengeAccount.highWaterMark
+  const isFunded = (challengeAccount as any).isFunded || false
 
   // 1. Daily Loss Check
   const maxDailyLoss = startBalance * (ruleset.maxDailyLossPct / 100)
@@ -69,21 +70,31 @@ export async function checkChallengeRules(
     newState = ChallengeState.PAUSED
   }
 
-  // 2. Drawdown Check
-  const currentDrawdown = (highWaterMark - currentEquity) / highWaterMark
-  const maxDrawdown = ruleset.maxDrawdownPct / 100
-  if (currentDrawdown > maxDrawdown) {
-    violations.push(`Maximum drawdown exceeded: ${(currentDrawdown * 100).toFixed(2)}% > ${ruleset.maxDrawdownPct}%`)
-    newState = ChallengeState.FAILED
+  // 2. Trailing Drawdown Check
+  // Drawdown = drop from high water mark, measured as fixed dollar amount based on startBalance
+  // Example: 7% of $5000 = $350. If HWM is $5200 and equity is $4850, that's $350 drop = hit limit
+  const maxDrawdownDollars = startBalance * (ruleset.maxDrawdownPct / 100)
+  const currentDrawdownDollars = highWaterMark - currentEquity
+  if (currentDrawdownDollars >= maxDrawdownDollars) {
+    violations.push(`Max trailing drawdown exceeded: $${currentDrawdownDollars.toFixed(2)} >= $${maxDrawdownDollars.toFixed(2)}`)
+    if (isFunded) {
+      // Funded accounts get frozen (PAUSED), not failed
+      newState = ChallengeState.PAUSED
+    } else {
+      // Challenge accounts fail
+      newState = ChallengeState.FAILED
+    }
   }
 
-  // 3. Profit Target Check
-  const profitTarget = startBalance * (ruleset.profitTargetPct / 100)
-  const currentProfit = currentEquity - startBalance
-  if (currentProfit >= profitTarget) {
-    // Check if no rule violations occurred
-    if (violations.length === 0) {
-      newState = ChallengeState.PASSED
+  // 3. Profit Target Check (only for challenge accounts, not funded)
+  if (!isFunded) {
+    const profitTarget = startBalance * (ruleset.profitTargetPct / 100)
+    const currentProfit = currentEquity - startBalance
+    if (currentProfit >= profitTarget) {
+      // Check if no rule violations occurred
+      if (violations.length === 0) {
+        newState = ChallengeState.PASSED
+      }
     }
   }
 
@@ -124,6 +135,38 @@ export async function updateChallengeAccountState(
     where: { id: challengeAccountId },
     data: updateData,
   })
+}
+
+/**
+ * When a challenge account passes, create a funded account with the same rules
+ */
+export async function createFundedAccount(
+  challengeAccountId: string
+): Promise<any> {
+  const challengeAccount = await prisma.challengeAccount.findUnique({
+    where: { id: challengeAccountId },
+    include: { ruleset: true },
+  })
+
+  if (!challengeAccount) {
+    throw new Error('Challenge account not found')
+  }
+
+  const startBalance = challengeAccount.startBalance
+
+  const fundedAccount = await prisma.challengeAccount.create({
+    data: {
+      userId: challengeAccount.userId,
+      rulesetId: challengeAccount.rulesetId,
+      startBalance,
+      equity: startBalance,
+      highWaterMark: startBalance,
+      isFunded: true,
+      state: 'ACTIVE',
+    },
+  })
+
+  return fundedAccount
 }
 
 export async function validateBetPlacement(
