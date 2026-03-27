@@ -120,13 +120,11 @@ export default function Header() {
         </div>
       </div>
       {session ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-            <span style={{ color: 'white', fontSize: '0.875rem' }}>
-              Current Plan: {formatPlan(plan)}
-            </span>
-          </div>
-          <span style={{ color: 'white', fontSize: '0.875rem' }}>
+        <div className="nav-right-auth" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <span className="nav-hide-mobile" style={{ color: 'white', fontSize: '0.875rem' }}>
+            Current Plan: {formatPlan(plan)}
+          </span>
+          <span className="nav-hide-mobile" style={{ color: 'white', fontSize: '0.875rem' }}>
             {session.user?.email}
           </span>
           {isAdmin && (
@@ -255,7 +253,7 @@ export default function Header() {
       )}
     </nav>
     {session && typeof equity === 'number' && (
-      <div style={{
+      <div className="nav-equity-bar" style={{
         display: 'flex',
         justifyContent: 'flex-end',
         padding: '0.75rem 2rem 0',

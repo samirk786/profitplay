@@ -106,7 +106,7 @@ export default function Pricing() {
       <main style={{ 
         maxWidth: '1200px', 
         margin: '0 auto', 
-        padding: '4rem 2rem',
+        padding: 'clamp(2rem, 5vw, 4rem) clamp(1rem, 3vw, 2rem)',
         minHeight: 'calc(100vh - 80px)'
       }}>
         <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
@@ -131,7 +131,7 @@ export default function Pricing() {
 
         <div style={{ 
           display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', 
           gap: '2rem',
           marginBottom: '5rem'
         }}>

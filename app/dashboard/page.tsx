@@ -570,10 +570,10 @@ export default function Dashboard() {
     <div className="App">
       <Header />
 
-      <main style={{ 
-        maxWidth: '1200px', 
-        margin: '0 auto', 
-        padding: '2rem',
+      <main style={{
+        maxWidth: '1200px',
+        margin: '0 auto',
+        padding: 'clamp(1rem, 3vw, 2rem)',
         minHeight: 'calc(100vh - 80px)'
       }}>
         {/* Welcome Section */}
@@ -594,7 +594,7 @@ export default function Dashboard() {
         {/* Stats Grid */}
         <div style={{ 
           display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(250px, 100%), 1fr))',
           gap: '1.5rem', 
           marginBottom: '2rem' 
         }}>
@@ -725,7 +725,7 @@ export default function Dashboard() {
         {/* Progress Section */}
         <div style={{ 
           display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(400px, 100%), 1fr))',
           gap: '2rem', 
           marginBottom: '2rem' 
         }}>
