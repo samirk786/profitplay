@@ -131,10 +131,10 @@ export async function GET(request: NextRequest) {
       markets: formattedMarkets,
       ...(unavailableGames.length > 0 && { unavailableGames })
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Markets fetch error:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error?.message || String(error) },
       { status: 500 }
     )
   }
