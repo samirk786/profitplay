@@ -1231,11 +1231,12 @@ body {
   .players-section {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.75rem;
-    padding: 0.75rem;
+    padding: 0.75rem 1rem;
   }
 
-  .players-section-spread {
-    grid-template-columns: 1fr;
+  .players-section.players-section-spread {
+    grid-template-columns: 1fr !important;
+    padding: 0.75rem 1rem;
   }
 
   /* Player Card */
@@ -1318,7 +1319,11 @@ body {
   .players-section {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.5rem;
-    padding: 0.5rem;
+    padding: 0.5rem 1rem;
+  }
+
+  .players-section.players-section-spread {
+    grid-template-columns: 1fr !important;
   }
 
   .player-card {
